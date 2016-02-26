@@ -3,29 +3,27 @@
 
 #include "rc4.h"
 
-rc4_ctx_t rc4_init(const uint8_t *key, const size_t len) {
+void rc4_init(rc4_ctx_t *ctx, const uint8_t *key, const size_t len) {
 	size_t i;
 	uint8_t j, temp;
-	rc4_ctx_t out;
 
 	for(i = 0; i < 256; i++)
-		out.table[i] = i;
+		ctx->table[i] = i;
 
 	j = 0;
 
 	for(i = 0; i < 256; i++) {
-		j += out.table[i] + key[i % len];
+		j += ctx->table[i] + key[i % len];
 		
-		temp = out.table[i];
-		out.table[i] = out.table[j];
-		out.table[j] = temp;
+		temp = ctx->table[i];
+		ctx->table[i] = ctx->table[j];
+		ctx->table[j] = temp;
 	}
 
-	out.idx1 = out.idx2 = 0;
-	return out;
+	ctx->idx1 = ctx->idx2 = 0;
 }
 
-void rc4_gen(uint8_t *stream, const size_t len, rc4_ctx_t *ctx) {
+void rc4_gen(rc4_ctx_t *ctx, uint8_t *stream, const size_t len) {
 	size_t n;
 	uint8_t temp, idx1, idx2;
 

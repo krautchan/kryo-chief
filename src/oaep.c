@@ -35,9 +35,9 @@ uint8_t *oaep(const uint8_t *msg, const size_t msglen, const size_t modlen) {
 	if((mask = malloc(dblen)) == NULL) goto freedb;
 
 	getrand(seed, 32, NULL);
-	rc4_ctx = rc4_init(seed, 32);
-	rc4_drop(4096, &rc4_ctx);
-	rc4_gen(mask, dblen, &rc4_ctx);
+	rc4_init(&rc4_ctx, seed, 32);
+	rc4_drop(&rc4_ctx, 4096);
+	rc4_gen(&rc4_ctx, mask, dblen);
 	xorblock(mask, DB, dblen);
 	
 	hash = sha256(mask, dblen);
@@ -76,9 +76,9 @@ uint8_t *inv_oaep(const uint8_t *in, const size_t modlen, size_t *msglen) {
 	sha256_free(hash);
 
 	if((mask = malloc(dblen)) == NULL) goto freedb;
-	rc4_ctx = rc4_init(seed, 32);
-	rc4_drop(4096, &rc4_ctx);
-	rc4_gen(mask, dblen, &rc4_ctx);
+	rc4_init(&rc4_ctx, seed, 32);
+	rc4_drop(&rc4_ctx, 4096);
+	rc4_gen(&rc4_ctx, mask, dblen);
 	xorblock(DB, mask, dblen);
 	free(mask);
 
