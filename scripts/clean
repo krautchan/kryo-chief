@@ -1,0 +1,18 @@
+#!/bin/bash
+
+pushd .. 				> /dev/null
+echo make clean...		> /dev/null
+make clean				> /dev/null
+echo Deleting unneeded files...
+rm -vf *.bin			> /dev/null
+
+echo Restoring test files...
+rm -rf local			> /dev/null
+cp -vR backup/local .	> /dev/null
+
+popd 					> /dev/null
+
+echo Restoring checksums...
+./digests_gen
+
+exit 0

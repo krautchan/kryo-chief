@@ -1,0 +1,10 @@
+#!/bin/bash
+
+INPUT=local
+OUTPUT=etc/digests
+
+pushd .. > /dev/null
+find $INPUT -type f -print0 | xargs -0 md5sum > $OUTPUT
+popd > /dev/null
+
+exit 0

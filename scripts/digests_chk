@@ -1,0 +1,16 @@
+#!/bin/bash
+
+INPUT=etc/digests
+
+pushd .. 			> /dev/null
+md5sum -c $INPUT 	> /dev/null 2>&1
+RET=$?
+popd > /dev/null
+
+if [ $RET -eq 0 ]; then
+	echo Passed.
+else
+	echo Failed.
+fi
+
+exit $RET
