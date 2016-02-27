@@ -252,20 +252,16 @@ freemp:
 	return out;
 }
 
-uint8_t *rsa_keyid_fromserial(const uint8_t *data) {
+int rsa_keyid_fromserial(const uint8_t *data, uint8_t *out) {
 	uint32_t bytes_m, bytes_e;
 	size_t offs = 0;
-	sha256_t hash;
 
-	if(data == NULL)
-		return NULL;
+	if(data == NULL) return 0;
 
 	bytes_m = *(data + offs);	offs += INT_SIZE + bytes_m;
 	bytes_e = *(data + offs);	offs += INT_SIZE + bytes_e;
 
-	hash = sha256(data, offs);
-
-	return hash.string;
+	return sha256(data, offs, out);
 }
 
 void rsa_keypair_print(rsa_keypair_t *pair) {

@@ -17,7 +17,7 @@ static const uint8_t lhash[32] = {
 
 uint8_t *oaep(const uint8_t *msg, const size_t msglen, const size_t modlen) {
 	uint8_t seed[32], *DB, *mask, *out = NULL;
-	sha256_t hash;
+	uint8_t sha256_out[32];
 	rc4_ctx_t rc4_ctx;
 	size_t padlen, dblen;
 
@@ -39,10 +39,9 @@ uint8_t *oaep(const uint8_t *msg, const size_t msglen, const size_t modlen) {
 	rc4_drop(&rc4_ctx, 4096);
 	rc4_gen(&rc4_ctx, mask, dblen);
 	xorblock(mask, DB, dblen);
-	
-	hash = sha256(mask, dblen);
-	xorblock(seed, hash.string, 32);
-	sha256_free(hash);
+
+	sha256(mask, dblen, sha256_out);
+	xorblock(seed, sha256_out, 32);
 
 	if((out = malloc(modlen / 8)) == NULL) goto freemask;
 
@@ -60,8 +59,8 @@ freedb:
 
 uint8_t *inv_oaep(const uint8_t *in, const size_t modlen, size_t *msglen) {
 	uint8_t *DB, seed[32], *mask, *out = NULL;
+	uint8_t sha256_out[32];
 	size_t dblen, outlen;
-	sha256_t hash;
 	rc4_ctx_t rc4_ctx;
 
 	memcpy(seed, in + 1, 32);
@@ -71,10 +70,9 @@ uint8_t *inv_oaep(const uint8_t *in, const size_t modlen, size_t *msglen) {
 	if((DB = malloc(dblen)) == NULL) return NULL;
 	memcpy(DB, in + 33, dblen);
 
-	hash = sha256(DB, dblen);
-	xorblock(seed, hash.string, 32);
-	sha256_free(hash);
-
+	sha256(DB, dblen, sha256_out);
+	xorblock(seed, sha256_out, 32);
+	
 	if((mask = malloc(dblen)) == NULL) goto freedb;
 	rc4_init(&rc4_ctx, seed, 32);
 	rc4_drop(&rc4_ctx, 4096);

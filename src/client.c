@@ -152,7 +152,7 @@ freesym:
 
 static uint8_t *local_seckey(const char *token, const uint8_t *key_id, size_t *len, int *status) {
 	FILE *fp;
-	uint8_t *serial, *mykey_id, *out = NULL;
+	uint8_t *serial, mykey_id[32], *out = NULL;
 
 	*status = TOKEN_REJECTED;
 	if(cc_check(token, strlen(token)) != CC_OK) return NULL;
@@ -163,16 +163,14 @@ static uint8_t *local_seckey(const char *token, const uint8_t *key_id, size_t *l
 
 	if((serial = malloc(*len)) == NULL) goto closefp;
 	if(fread(serial, *len, 1, fp) == 0) goto freeserial;
-	if((mykey_id = rsa_keyid_fromserial(serial)) == NULL) goto freeserial;
+	if(rsa_keyid_fromserial(serial, mykey_id) == 0) goto freeserial;
 	
 	*status = UNKNOWN_KEY;
-	if(memcmp(key_id, mykey_id, 32)) goto freekid;
+	if(memcmp(key_id, mykey_id, 32)) goto freeserial;
 
 	*status = TOKEN_ACCEPTED;
 	out = serial;
 
-freekid:
-	free(mykey_id);
 freeserial:
 	if(out == NULL)
 		free(serial);
@@ -186,7 +184,7 @@ static uint8_t *request_seckey(const char *token, int *status) {
 	FILE *secfp, *pubfp;
 	uint32_t offs;
 	size_t declen, keylen, fsize = INT_SIZE;
-	uint8_t *sec_key, *key_id, *enc_key, *sym_key = NULL;
+	uint8_t *sec_key, key_id[32], *enc_key, *sym_key = NULL;
 	uint8_t *buf;
 
 	*status = GENERIC_ERROR;
@@ -204,10 +202,10 @@ static uint8_t *request_seckey(const char *token, int *status) {
 	if(fseek(pubfp, INT_SIZE, SEEK_SET) == -1) goto freeenc;
 	if((buf = malloc(fsize)) == NULL) goto freeenc;
 	if(fread(buf, fsize, 1, pubfp) == 0) goto freebuf;
-	if((key_id = rsa_keyid_fromserial(buf)) == NULL) goto freebuf;
+	if(rsa_keyid_fromserial(buf, key_id) == 0) goto freebuf;
 
 	/* Do the actual request */
-	if((sec_key = local_seckey(token, key_id, &keylen, status)) == NULL) goto freekid;
+	if((sec_key = local_seckey(token, key_id, &keylen, status)) == NULL) goto freebuf;
 	
 	*status = GENERIC_ERROR;
 	if((secfp = fopen(SECFILE, "wb")) != NULL) {
@@ -223,8 +221,6 @@ static uint8_t *request_seckey(const char *token, int *status) {
 	rsa_keypair_free(pair);
 freesec:
 	free(sec_key);
-freekid:
-	free(key_id);
 freebuf:
 	free(buf);
 freeenc:
