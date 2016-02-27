@@ -61,6 +61,24 @@ freepair:
 	return NULL;
 }
 
+static int checkdata(const uint8_t *data, const size_t len, const size_t n_numbers) {
+	uint32_t readsize, sumsize = 0;
+	size_t i, remaining = len;
+
+	for(i = 0; i < n_numbers; i++) {
+		if(remaining < INT_SIZE) return 0;
+		readsize = *(data + sumsize);
+
+		sumsize += INT_SIZE;
+		remaining -= INT_SIZE;
+		
+		if(remaining < readsize) return 0;
+		sumsize += readsize;
+		remaining -= readsize;
+	}
+	return 1;
+}
+
 uint8_t *rsa_serialize_public(rsa_keypair_t *pair, size_t *len) {
 	uint32_t bytes_m, bytes_e;
 	size_t offs = 0;
@@ -92,10 +110,10 @@ rsa_keypair_t *rsa_read_public(const uint8_t *data, const size_t len) {
 	uint32_t bytes_m, bytes_e;
 	size_t offs = 0;
 
+	if(checkdata(data, len, 2) = 0) return NULL;
 	if((out = emptypublic()) == NULL) return NULL;
 	mp_init_multi(out->modulus, out->public, NULL);
 
-	/* Validate or crash! */
 	bytes_m = *(data + offs);									offs += INT_SIZE;
 	mp_read_unsigned_bin(out->modulus, data + offs, bytes_m);	offs += bytes_m;
 	bytes_e = *(data + offs);									offs += INT_SIZE;
@@ -110,9 +128,7 @@ uint8_t *rsa_serialize_pair(rsa_keypair_t *pair, size_t *len) {
 	size_t offs = 0;
 	uint8_t *out;
 
-	if(pair == NULL)
-		return NULL;
-
+	if(pair == NULL) return NULL;
 	if((pair->public == NULL) || (pair->secret == NULL) || (pair->modulus == NULL))
 		return NULL;
 
@@ -171,10 +187,12 @@ rsa_keypair_t *rsa_read_secret(const uint8_t *data, const size_t len) {
 	uint32_t bytes_p, bytes_q, bytes_dp, bytes_dq, bytes_qi;
 	size_t offs = 0;
 
+	/* We need to have at least 3 numbers for a valid secret key */
+	if(checkdata(data, len, 3) == 0) return 0;
 	if((out = emptypair()) == NULL) return NULL;
+
 	mp_init_multi(out->modulus, out->public, out->secret, NULL);
 
-	/* Validate or crash! */
 	bytes_m = *(data + offs);									offs += INT_SIZE;
 	mp_read_unsigned_bin(out->modulus, data + offs, bytes_m);	offs += bytes_m;
 	bytes_e = *(data + offs);									offs += INT_SIZE;
@@ -182,8 +200,7 @@ rsa_keypair_t *rsa_read_secret(const uint8_t *data, const size_t len) {
 	bytes_d = *(data + offs);									offs += INT_SIZE;
 	mp_read_unsigned_bin(out->secret, data + offs, bytes_d);	offs += bytes_d;
 
-	/* Assume all additional values are present. Bad assumption. */
-	if(len - offs > 0) {
+	if((len >= offs) && (checkdata(data + offs, len - offs, 5) != 0)) {
 		mp_init_multi(out->p, out->q, out->dp, out->dq, out->qi, NULL);
 
 		bytes_p = *(data + offs);								offs += INT_SIZE;
