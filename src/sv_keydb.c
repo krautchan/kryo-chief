@@ -8,6 +8,7 @@
 #include "etc.h"
 #include "fslist.h"
 #include "rsa_io.h"
+#include "sha256.h"
 
 typedef struct keydb_t {
 	uint32_t n_pregen, n_regen, n_keys;
@@ -25,7 +26,7 @@ int genthread_shutdown = 0;
 
 static int saveent(dbent_t *ent) {
 	FILE *fp;
-	uint8_t *serial, keyid[32];
+	uint8_t *serial, keyid[SHA256_SIZE];
 	char *filename, buf[3];
 	size_t serial_len, filename_len, i;
 
@@ -42,7 +43,7 @@ static int saveent(dbent_t *ent) {
 		return 0;
 	}
 
-	filename_len = strlen(keydb.basedir) + strlen(CONFIG_KEYFILE_EXT) + 2 * 32 + 2;
+	filename_len = strlen(keydb.basedir) + strlen(CONFIG_KEYFILE_EXT) + 2 * SHA256_SIZE + 2;
 	if((filename = malloc(filename_len)) == NULL) {
 		printf("malloc() failed!\n");
 		free(serial);
@@ -51,7 +52,7 @@ static int saveent(dbent_t *ent) {
 
 	memset(filename, 0, filename_len);
 	sprintf(filename, "%s/", keydb.basedir);
-	for(i = 0; i < 32; i++) {
+	for(i = 0; i < SHA256_SIZE; i++) {
 		sprintf(buf, "%02x", keyid[i]);
 		strcat(filename, buf);
 	}

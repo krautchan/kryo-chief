@@ -12,6 +12,7 @@
 #include "fslist.h"
 #include "rsa.h"
 #include "rsa_io.h"
+#include "sha256.h"
 
 #define PUBFILE			"enc_key.bin"
 #define SECFILE			"dec_key.bin"
@@ -162,7 +163,7 @@ static uint8_t *local_seckey(const char *token, const uint8_t *key_id, size_t *l
 	if(rsa_keyid_fromserial(serial, mykey_id) == 0) goto freeserial;
 	
 	*status = UNKNOWN_KEY;
-	if(memcmp(key_id, mykey_id, 32)) goto freeserial;
+	if(memcmp(key_id, mykey_id, SHA256_SIZE)) goto freeserial;
 
 	*status = TOKEN_ACCEPTED;
 	out = serial;

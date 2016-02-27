@@ -7,6 +7,10 @@
 #define CONFIG_PREALLOC_FILES	16
 #endif
 
+#ifndef CONFIG_RC4_DROP
+#define CONFIG_RC4_DROP			4096
+#endif
+
 /* Server configuration */
 
 #ifndef CONFIG_RSA_KSIZE

@@ -9,7 +9,7 @@
 #include "sha256.h"
 
 /* sha256("") */
-static const uint8_t lhash[32] = {
+static const uint8_t lhash[SHA256_SIZE] = {
 	0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 
 	0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24,
 	0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c,
@@ -17,38 +17,38 @@ static const uint8_t lhash[32] = {
 };
 
 uint8_t *oaep(const uint8_t *msg, const size_t msglen, const size_t modlen) {
-	uint8_t seed[32], *DB, *mask, *out = NULL;
-	uint8_t sha256_out[32];
+	uint8_t seed[SHA256_SIZE], *DB, *mask, *out = NULL;
+	uint8_t sha256_out[SHA256_SIZE];
 	rc4_ctx_t rc4_ctx;
 	size_t padlen, dblen;
 
-	dblen = modlen / 8 - 33; /* 0x00 + seed[32] */
-	padlen = dblen - msglen - 32; /* lhash[32] */
+	dblen = modlen / 8 - SHA256_SIZE - 1;
+	padlen = dblen - msglen - SHA256_SIZE;
 
-	if(dblen < msglen + 32) return NULL;
+	if(dblen < msglen + SHA256_SIZE) return NULL;
 	if((DB = malloc(dblen)) == NULL) return NULL;
 
-	memcpy(DB, lhash, 32);
-	memcpy(DB + 32 + padlen, msg, msglen);
-	memset(DB + 32, 0, padlen - 1);
-	DB[32 + padlen - 1] = 1;
+	memcpy(DB, lhash, SHA256_SIZE);
+	memcpy(DB + SHA256_SIZE + padlen, msg, msglen);
+	memset(DB + SHA256_SIZE, 0, padlen - 1);
+	DB[SHA256_SIZE + padlen - 1] = 1;
 
 	if((mask = malloc(dblen)) == NULL) goto freedb;
 
-	getrand(seed, 32, NULL);
-	rc4_init(&rc4_ctx, seed, 32);
-	rc4_drop(&rc4_ctx, 4096);
+	getrand(seed, SHA256_SIZE, NULL);
+	rc4_init(&rc4_ctx, seed, SHA256_SIZE);
+	rc4_drop(&rc4_ctx, CONFIG_RC4_DROP);
 	rc4_gen(&rc4_ctx, mask, dblen);
 	xorblock(mask, DB, dblen);
 
 	sha256(mask, dblen, sha256_out);
-	xorblock(seed, sha256_out, 32);
+	xorblock(seed, sha256_out, SHA256_SIZE);
 
 	if((out = malloc(modlen / 8)) == NULL) goto freemask;
 
 	out[0] = 0;
-	memcpy(out + 1, seed, 32);
-	memcpy(out + 33, mask, dblen);
+	memcpy(out + 1, seed, SHA256_SIZE);
+	memcpy(out + SHA256_SIZE + 1, mask, dblen);
 
 freemask:
 	free(mask);
@@ -59,31 +59,31 @@ freedb:
 }
 
 uint8_t *inv_oaep(const uint8_t *in, const size_t modlen, size_t *msglen) {
-	uint8_t *DB, seed[32], *mask, *out = NULL;
-	uint8_t sha256_out[32];
+	uint8_t *DB, seed[SHA256_SIZE], *mask, *out = NULL;
+	uint8_t sha256_out[SHA256_SIZE];
 	size_t dblen, outlen;
 	rc4_ctx_t rc4_ctx;
 
-	memcpy(seed, in + 1, 32);
+	memcpy(seed, in + 1, SHA256_SIZE);
 
-	if(modlen / 8 < 33) return NULL;
-	dblen = modlen / 8 - 33;
+	if(modlen / 8 < SHA256_SIZE + 1) return NULL;
+	dblen = modlen / 8 - SHA256_SIZE - 1;
 	if((DB = malloc(dblen)) == NULL) return NULL;
-	memcpy(DB, in + 33, dblen);
+	memcpy(DB, in + SHA256_SIZE + 1, dblen);
 
 	sha256(DB, dblen, sha256_out);
-	xorblock(seed, sha256_out, 32);
+	xorblock(seed, sha256_out, SHA256_SIZE);
 	
 	if((mask = malloc(dblen)) == NULL) goto freedb;
-	rc4_init(&rc4_ctx, seed, 32);
-	rc4_drop(&rc4_ctx, 4096);
+	rc4_init(&rc4_ctx, seed, SHA256_SIZE);
+	rc4_drop(&rc4_ctx, CONFIG_RC4_DROP);
 	rc4_gen(&rc4_ctx, mask, dblen);
 	xorblock(DB, mask, dblen);
 	free(mask);
 
-	if(memcmp(DB, lhash, 32)) goto freedb;
+	if(memcmp(DB, lhash, SHA256_SIZE)) goto freedb;
 
-	outlen = 32;
+	outlen = SHA256_SIZE;
 	while(!DB[outlen++]);
 	outlen = dblen - outlen;
 
