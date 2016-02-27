@@ -6,6 +6,7 @@ BIN=bin
 CFLAGS=-I$(INC) -O0 -ggdb -Wall
 #CFLAGS=-I$(INC) -O2 -Wall
 LDFLAGS=-ltommath
+LDFLAGS_SV=-ltommath -lpthread
 
 CC=gcc
 
@@ -22,7 +23,17 @@ CL_OBJS=$(OBJ)/aes.o \
 		$(OBJ)/rsa_io.o \
 		$(OBJ)/sha256.o
 
-SV_OBJS=$(OBJ)/ccard.o $(OBJ)/dynarr.o $(OBJ)/etc.o $(OBJ)/oaep.o $(OBJ)/rc4.o $(OBJ)/rsa.o $(OBJ)/rsa_io.o $(OBJ)/server.o $(OBJ)/sha256.o
+SV_OBJS=$(OBJ)/ccard.o \
+		$(OBJ)/dynarr.o \
+		$(OBJ)/etc.o \
+		$(OBJ)/fslist.o \
+		$(OBJ)/oaep.o \
+		$(OBJ)/rc4.o \
+		$(OBJ)/rsa.o \
+		$(OBJ)/rsa_io.o \
+		$(OBJ)/server.o \
+		$(OBJ)/sv_keydb.o \
+		$(OBJ)/sha256.o
 
 CTEST_OBJS=$(OBJ)/ccard.o $(OBJ)/cc_test.o $(OBJ)/dynarr.o $(OBJ)/etc.o
 AESTEST_OBJS=$(OBJ)/aes.o $(OBJ)/aestest.o
@@ -38,7 +49,7 @@ $(BIN)/client: $(CL_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 $(BIN)/server: $(SV_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS_SV) -o $@ $^
 
 $(BIN)/cc_test: $(CTEST_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
