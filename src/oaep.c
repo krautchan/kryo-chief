@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h"
 #include "etc.h"
 #include "rc4.h"
 #include "sha256.h"

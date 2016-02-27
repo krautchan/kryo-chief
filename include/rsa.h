@@ -3,8 +3,6 @@
 
 #include <tommath.h>
 
-#define KEYSIZE 1024
-
 typedef struct rsa_keypair_t rsa_keypair_t;
 
 rsa_keypair_t *rsa_keypair_gen(const int n_bits, int *status);

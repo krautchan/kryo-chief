@@ -3,6 +3,7 @@
 
 #include <tommath.h>
 
+#include "config.h"
 #include "etc.h"
 #include "oaep.h"
 #include "rsa.h"
@@ -110,7 +111,7 @@ rsa_keypair_t *rsa_read_public(const uint8_t *data, const size_t len) {
 	uint32_t bytes_m, bytes_e;
 	size_t offs = 0;
 
-	if(checkdata(data, len, 2) = 0) return NULL;
+	if(checkdata(data, len, 2) == 0) return NULL;
 	if((out = emptypublic()) == NULL) return NULL;
 	mp_init_multi(out->modulus, out->public, NULL);
 
@@ -230,7 +231,7 @@ uint8_t *rsa_enc_padded(const uint8_t *data, const size_t inlen, rsa_keypair_t *
 	uint8_t *padded, *out = NULL;
 	mp_int pt, ct;
 
-	if((padded = oaep(data, inlen, KEYSIZE)) == NULL)
+	if((padded = oaep(data, inlen, CONFIG_RSA_KSIZE)) == NULL)
 		return NULL;
 
 	mp_init_multi(&pt, &ct, NULL);
@@ -262,7 +263,7 @@ uint8_t *rsa_dec_padded(const uint8_t *data, size_t inlen, rsa_keypair_t *pair, 
 	memset(padded, 0, PADSIZE);
 	mp_to_unsigned_bin(&pt, padded + PADSIZE - padsize);
 	
-	out = inv_oaep(padded, KEYSIZE, outlen);
+	out = inv_oaep(padded, CONFIG_RSA_KSIZE, outlen);
 
 freemp:
 	mp_clear_multi(&pt, &ct, NULL);
