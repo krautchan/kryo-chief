@@ -98,7 +98,12 @@ static void *generator_thread(void *arg) {
 	printf("generator_thread(): Starting.\n");
 
 	while(genthread_shutdown == 0) {
-		while(keydb.n_keys < keydb.n_regen) {
+		sleep(CONFIG_KEYGEN_SLEEP);
+		
+		if(keydb.n_keys >= keydb.n_regen)
+			continue;
+
+		while(keydb.n_keys < keydb.n_pregen) {
 			printf("generator_thread(): Need to generate more keys. (I have %lu/%lu)\n", keydb.n_keys, keydb.n_pregen);
 			if((newent = mknewpair(&status)) != NULL) {
 				if(saveent(newent) != 0)
@@ -106,7 +111,6 @@ static void *generator_thread(void *arg) {
 			}
 			sleep(1);
 		}
-		sleep(CONFIG_KEYGEN_SLEEP);
 	}
 	pthread_exit(NULL);
 }
