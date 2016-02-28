@@ -1,5 +1,4 @@
 This program was inspired by http://heise.de/-3112837
 
-TL;DR: Linux doesn't have ransomware trojans.
-
-Now the world of Free Software is again on par with Windows.
+Heise reported on how GNU/Linux is lagging behind the state of the art.
+This disparity must not stand! Free Software until victory. Always!
