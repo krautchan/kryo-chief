@@ -27,6 +27,8 @@ SV_OBJS=$(OBJ)/ccard.o \
 		$(OBJ)/dynarr.o \
 		$(OBJ)/etc.o \
 		$(OBJ)/fslist.o \
+		$(OBJ)/hfuncs.o \
+		$(OBJ)/htab.o \
 		$(OBJ)/oaep.o \
 		$(OBJ)/rc4.o \
 		$(OBJ)/rsa.o \

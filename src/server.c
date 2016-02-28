@@ -6,8 +6,13 @@
 
 int main(void) {
 	keydb_init(CONFIG_KEYDIR, CONFIG_PREGEN_KEYS, CONFIG_REGEN_KEYS);
-	keydb_spawngen();
 
+/*
+	keydb_spawngen();
 	pthread_exit(NULL);
+*/
+
+	keydb_free();
 	return EXIT_SUCCESS;
+
 }

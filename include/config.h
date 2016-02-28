@@ -29,6 +29,10 @@
 #define CONFIG_KEYGEN_SLEEP		60
 #endif
 
+#ifndef CONFIG_KEYTAB_SIZE
+#define CONFIG_KEYTAB_SIZE		128
+#endif
+
 #ifndef CONFIG_KEYDIR
 #define CONFIG_KEYDIR			"etc/keystore"
 #endif

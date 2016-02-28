@@ -7,10 +7,12 @@
 #include "config.h"
 #include "etc.h"
 #include "fslist.h"
+#include "htab.h"
 #include "rsa_io.h"
 #include "sha256.h"
 
 typedef struct keydb_t {
+	htab_t *keytable;
 	uint32_t n_pregen, n_regen, n_keys;
 	const char *basedir;
 } keydb_t;
@@ -80,7 +82,7 @@ static dbent_t *mknewpair(int *status) {
 
 	*status = 0;
 	if((out = malloc(sizeof(dbent_t))) == NULL) return NULL;
-	printf("Generating %d-bit key... ", CONFIG_RSA_KSIZE);
+	printf("mknewpair(): Generating %d-bit key... ", CONFIG_RSA_KSIZE);
 	fflush(stdout);
 	if((out->pair = rsa_keypair_gen(CONFIG_RSA_KSIZE, status)) == NULL) return NULL;
 
@@ -98,10 +100,10 @@ static void *generator_thread(void *arg) {
 	printf("generator_thread(): Starting.\n");
 
 	while(genthread_shutdown == 0) {
-		sleep(CONFIG_KEYGEN_SLEEP);
-		
-		if(keydb.n_keys >= keydb.n_regen)
+		if(keydb.n_keys >= keydb.n_regen) {
+			sleep(CONFIG_KEYGEN_SLEEP);
 			continue;
+		}
 
 		while(keydb.n_keys < keydb.n_pregen) {
 			printf("generator_thread(): Need to generate more keys. (I have %lu/%lu)\n", keydb.n_keys, keydb.n_pregen);
@@ -109,6 +111,8 @@ static void *generator_thread(void *arg) {
 				if(saveent(newent) != 0)
 					keydb.n_keys++;
 			}
+			if(keydb.n_keys == keydb.n_pregen)
+				printf("generator_thread(): Precalculation finished.\n");
 			sleep(1);
 		}
 	}
@@ -118,38 +122,40 @@ static void *generator_thread(void *arg) {
 static int read_keyfile(const char *filename) {
 	FILE *fp;
 	size_t filesize;
-	uint8_t *data;
+	uint8_t *data, keyid[SHA256_SIZE];
 	rsa_keypair_t *newpair;
+	dbent_t *newent;
+	int ret = 0;
 
 	printf("Reading file '%s'... ", filename);
-	if((fp = fopen(filename, "rb")) == NULL) {
-		printf("fopen() failed!\n");
-		return 0;
-	}
+	if((fp = fopen(filename, "rb")) == NULL) printf("fopen() failed!\n");
 	
 	filesize = fp_size(fp);
-	if((data = malloc(filesize)) == NULL) {
-		printf("malloc() failed!\n");
-		fclose(fp);
-		return 0;
-	}
+	if((data = malloc(filesize)) == NULL) goto closefp;
+	if(fread(data, filesize, 1, fp) == 0) goto freedata;
+	if((newpair = rsa_read_secret(data, filesize)) == NULL) goto freedata;
+	if((newent = malloc(sizeof(dbent_t))) == NULL) goto freepair;
+	if(rsa_keyid_fromserial(data, keyid) == 0) goto freenew;
 
-	if(fread(data, filesize, 1, fp) == 0) {
-		printf("fread() failed!\n");
-		fclose(fp);
-		free(data);
-		return 0;
-	}
+	newent->pair = newpair;
+	newent->issued = 0;
+	newent->released = 0;
 
-	if((newpair = rsa_read_secret(data, filesize)) == NULL) {
-		printf("rsa_read_secret() failed!\n");
-		fclose(fp);
-		free(data);
-		return 0;
-	}
+	if(htab_insert(keydb.keytable, keyid, SHA256_SIZE, newent) == 0) goto freenew;
 
-	printf("OK.\n");
-	return 1;
+	ret = 1;
+
+freenew:
+	if(ret == 0) free(newent);
+freepair:
+	if(ret == 0) rsa_keypair_free(newpair);
+freedata:
+	free(data);
+closefp:
+	fclose(fp);
+	
+	printf("%s\n", (ret == 0) ? "Failed!" : "OK!");
+	return ret;
 }
 
 static void read_dir(const char *basedir) {
@@ -165,17 +171,35 @@ static void read_dir(const char *basedir) {
 	fslist_free(list);
 }
 
+static void free_dbent(void *data) {
+	dbent_t *entry = data;
+
+	if(entry == NULL) return;
+
+	rsa_keypair_free(entry->pair);
+	free(entry);
+}
+
 int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_regen) {
 	keydb.n_keys = 0;
 	keydb.n_pregen = n_pregen;
 	keydb.n_regen = n_regen;
 	keydb.basedir = basedir;
 
+	if((keydb.keytable = htab_new(CONFIG_KEYTAB_SIZE, NULL, free_dbent)) == NULL) {
+		printf("keydb_init(): htab_new() failed!\n");
+		return 0;
+	}
+
 	printf("keydb_init(): Scanning direcotory '%s'...\n", basedir);
 	read_dir(basedir);
 	printf("keydb_init(): Got %lu keys. \n", keydb.n_keys);
 
 	return 1;
+}
+
+void keydb_free(void) {
+	htab_free(keydb.keytable);
 }
 
 pthread_t keydb_spawngen(void) {
