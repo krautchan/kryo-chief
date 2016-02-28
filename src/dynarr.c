@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "dynarr.h"
+#include "etc.h"
 
 struct dynarr_t {
 	size_t size_entry;

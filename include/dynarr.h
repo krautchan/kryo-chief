@@ -3,8 +3,9 @@
 
 #include <stdlib.h>
 
+#include "etc.h"
+
 typedef struct dynarr_t dynarr_t;
-typedef void (*freefunc_t)(void*);
 
 dynarr_t *dynarr_new(const size_t size_entry, const size_t prealloc, freefunc_t ffunc);
 int dynarr_add(dynarr_t *arr, void *data);
