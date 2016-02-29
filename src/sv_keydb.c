@@ -23,12 +23,13 @@ typedef struct dbent_t {
 } dbent_t;
 
 static keydb_t keydb;
+static pthread_mutex_t db_mutex;
 
 int genthread_shutdown = 0;
 
-static int saveent(dbent_t *ent) {
+static int saveent(dbent_t *ent, uint8_t *keyid) {
 	FILE *fp;
-	uint8_t *serial, keyid[SHA256_SIZE];
+	uint8_t *serial;
 	char *filename, buf[3];
 	size_t serial_len, filename_len, i;
 
@@ -93,9 +94,23 @@ static dbent_t *mknewpair(int *status) {
 	return out;	
 }
 
+static int keydb_insert(dbent_t *newent, uint8_t *keyid) {
+	int ret;
+	
+	pthread_mutex_lock(&db_mutex);
+	
+	if((ret = htab_insert(keydb.keytable, keyid, SHA256_SIZE, newent)) == 1)
+		keydb.n_keys++;
+
+	pthread_mutex_unlock(&db_mutex);
+	
+	return ret;
+}
+
 static void *generator_thread(void *arg) {
 	int status;
 	dbent_t *newent;
+	uint8_t keyid[SHA256_SIZE];
 
 	printf("generator_thread(): Starting.\n");
 
@@ -108,8 +123,8 @@ static void *generator_thread(void *arg) {
 		while(keydb.n_keys < keydb.n_pregen) {
 			printf("generator_thread(): Need to generate more keys. (I have %lu/%lu)\n", keydb.n_keys, keydb.n_pregen);
 			if((newent = mknewpair(&status)) != NULL) {
-				if(saveent(newent) != 0)
-					keydb.n_keys++;
+				saveent(newent, keyid);
+				keydb_insert(newent, keyid);
 			}
 			if(keydb.n_keys == keydb.n_pregen)
 				printf("generator_thread(): Precalculation finished.\n");
@@ -141,7 +156,7 @@ static int read_keyfile(const char *filename) {
 	newent->issued = 0;
 	newent->released = 0;
 
-	if(htab_insert(keydb.keytable, keyid, SHA256_SIZE, newent) == 0) goto freenew;
+	if(keydb_insert(newent, keyid) == 0) goto freenew;
 
 	ret = 1;
 
@@ -165,8 +180,7 @@ static void read_dir(const char *basedir) {
 	if((list = fslist_scan(basedir)) == NULL) return;
 
 	for(i = 0; i < list->n; i++)
-		if(read_keyfile(list->filename[i]) == 1) 
-			keydb.n_keys++;
+		read_keyfile(list->filename[i]);
 
 	fslist_free(list);
 }
@@ -186,6 +200,8 @@ int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_re
 	keydb.n_regen = n_regen;
 	keydb.basedir = basedir;
 
+	pthread_mutex_init(&db_mutex, NULL);
+
 	if((keydb.keytable = htab_new(CONFIG_KEYTAB_SIZE, NULL, free_dbent)) == NULL) {
 		printf("keydb_init(): htab_new() failed!\n");
 		return 0;
@@ -200,6 +216,7 @@ int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_re
 
 void keydb_free(void) {
 	htab_free(keydb.keytable);
+	pthread_mutex_destroy(&db_mutex);
 }
 
 pthread_t keydb_spawngen(void) {
