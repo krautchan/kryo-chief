@@ -16,6 +16,8 @@ uint8_t *rsa_dec_padded(const uint8_t *data, const size_t inlen, rsa_keypair_t *
 
 int rsa_keyid_fromserial(const uint8_t *data, uint8_t *out);
 
+int rsa_keypair_test(rsa_keypair_t *pair);
+
 void rsa_keypair_print(rsa_keypair_t *pair);
 
 #endif

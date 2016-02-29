@@ -16,16 +16,17 @@ static const uint8_t lhash[SHA256_SIZE] = {
 	0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55
 };
 
-uint8_t *oaep(const uint8_t *msg, const size_t msglen, const size_t modlen) {
+uint8_t *oaep(const uint8_t *msg, const size_t msglen, const size_t ksize_bytes) {
 	uint8_t seed[SHA256_SIZE], *DB, *mask, *out = NULL;
 	uint8_t sha256_out[SHA256_SIZE];
 	rc4_ctx_t rc4_ctx;
 	size_t padlen, dblen;
 
-	dblen = modlen / 8 - SHA256_SIZE - 1;
+	if(msglen + 2 * SHA256_SIZE + 2 > ksize_bytes) return NULL;
+
+	dblen = ksize_bytes - SHA256_SIZE - 1;
 	padlen = dblen - msglen - SHA256_SIZE;
 
-	if(dblen < msglen + SHA256_SIZE) return NULL;
 	if((DB = malloc(dblen)) == NULL) return NULL;
 
 	memcpy(DB, lhash, SHA256_SIZE);
@@ -44,7 +45,7 @@ uint8_t *oaep(const uint8_t *msg, const size_t msglen, const size_t modlen) {
 	sha256(mask, dblen, sha256_out);
 	xorblock(seed, sha256_out, SHA256_SIZE);
 
-	if((out = malloc(modlen / 8)) == NULL) goto freemask;
+	if((out = malloc(ksize_bytes)) == NULL) goto freemask;
 
 	out[0] = 0;
 	memcpy(out + 1, seed, SHA256_SIZE);
@@ -58,16 +59,17 @@ freedb:
 	return out;
 }
 
-uint8_t *inv_oaep(const uint8_t *in, const size_t modlen, size_t *msglen) {
+uint8_t *inv_oaep(const uint8_t *in, const size_t inlen, const size_t ksize_bytes, size_t *msglen) {
 	uint8_t *DB, seed[SHA256_SIZE], *mask, *out = NULL;
 	uint8_t sha256_out[SHA256_SIZE];
 	size_t dblen, outlen;
 	rc4_ctx_t rc4_ctx;
 
-	memcpy(seed, in + 1, SHA256_SIZE);
+	if(inlen < SHA256_SIZE * 2 + 1) return NULL;
+	if(inlen > ksize_bytes) return NULL;
 
-	if(modlen / 8 < SHA256_SIZE + 1) return NULL;
-	dblen = modlen / 8 - SHA256_SIZE - 1;
+	memcpy(seed, in + 1, SHA256_SIZE);
+	dblen = ksize_bytes - SHA256_SIZE - 1;
 	if((DB = malloc(dblen)) == NULL) return NULL;
 	memcpy(DB, in + SHA256_SIZE + 1, dblen);
 

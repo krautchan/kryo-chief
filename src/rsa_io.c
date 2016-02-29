@@ -120,6 +120,8 @@ rsa_keypair_t *rsa_read_public(const uint8_t *data, const size_t len) {
 	bytes_e = *(data + offs);									offs += INT_SIZE;
 	mp_read_unsigned_bin(out->public, data + offs, bytes_e);	offs += bytes_m;
 
+	out->ksize_bytes = bytes_m;
+
 	return out;
 }
 
@@ -201,6 +203,8 @@ rsa_keypair_t *rsa_read_secret(const uint8_t *data, const size_t len) {
 	bytes_d = *(data + offs);									offs += INT_SIZE;
 	mp_read_unsigned_bin(out->secret, data + offs, bytes_d);	offs += bytes_d;
 
+	out->ksize_bytes = bytes_m;
+
 	if((len >= offs) && (checkdata(data + offs, len - offs, 5) != 0)) {
 		mp_init_multi(out->p, out->q, out->dp, out->dq, out->qi, NULL);
 
@@ -231,11 +235,10 @@ uint8_t *rsa_enc_padded(const uint8_t *data, const size_t inlen, rsa_keypair_t *
 	uint8_t *padded, *out = NULL;
 	mp_int pt, ct;
 
-	if((padded = oaep(data, inlen, CONFIG_RSA_KSIZE)) == NULL)
-		return NULL;
+	if((padded = oaep(data, inlen, pair->ksize_bytes)) == NULL) return NULL;
 
 	mp_init_multi(&pt, &ct, NULL);
-	mp_read_unsigned_bin(&pt, padded, PADSIZE);
+	mp_read_unsigned_bin(&pt, padded, pair->ksize_bytes);
 	free(padded);
 
 	if(rsa_enc(&pt, pair, &ct) != MP_OKAY) goto freemp;
@@ -251,7 +254,7 @@ freemp:
 
 uint8_t *rsa_dec_padded(const uint8_t *data, size_t inlen, rsa_keypair_t *pair, size_t *outlen) {
 	mp_int pt, ct;
-	uint8_t padded[PADSIZE], *out = NULL;
+	uint8_t *padded, *out = NULL;
 	size_t padsize;
 
 	mp_init_multi(&pt, &ct, NULL);
@@ -260,11 +263,13 @@ uint8_t *rsa_dec_padded(const uint8_t *data, size_t inlen, rsa_keypair_t *pair, 
 	if(rsa_dec(&ct, pair, &pt) != MP_OKAY) goto freemp;
 
 	padsize = mp_unsigned_bin_size(&pt);
-	memset(padded, 0, PADSIZE);
-	mp_to_unsigned_bin(&pt, padded + PADSIZE - padsize);
+	if((padded = malloc(pair->ksize_bytes)) == NULL) goto freemp;
+	memset(padded, 0, padsize);
+	mp_to_unsigned_bin(&pt, padded + (pair->ksize_bytes) - padsize);
 	
-	out = inv_oaep(padded, CONFIG_RSA_KSIZE, outlen);
+	out = inv_oaep(padded, padsize, pair->ksize_bytes, outlen);
 
+	free(padded);
 freemp:
 	mp_clear_multi(&pt, &ct, NULL);
 	return out;
@@ -280,6 +285,41 @@ int rsa_keyid_fromserial(const uint8_t *data, uint8_t *out) {
 	bytes_e = *(data + offs);	offs += INT_SIZE + bytes_e;
 
 	return sha256(data, offs, out);
+}
+
+int rsa_keypair_test(rsa_keypair_t *pair) {
+	uint8_t data[SHA256_SIZE];
+	uint8_t *ct, *pt;
+	size_t ctlen, ptlen;
+	int ret = 0;
+	
+	if(getrand(data, SHA256_SIZE, NULL) == 0) {
+		printf("getrand()");
+		return 0;
+	}
+	if((ct = rsa_enc_padded(data, SHA256_SIZE, pair, &ctlen)) == NULL) {
+		printf("enc()");
+		return 0;
+	}
+	if((pt = rsa_dec_padded(ct, ctlen, pair, &ptlen)) == NULL) {
+		printf("dec()");
+		goto freect;
+	}
+	if(ptlen != SHA256_SIZE) {
+		printf("size()");
+		goto freept;
+	}
+	if(memcmp(pt, data, SHA256_SIZE) != 0) {
+		printf("cmp()");
+		goto freept;
+	}
+
+	ret = 1;
+freept:
+	free(pt);
+freect:
+	free(ct);
+	return ret;
 }
 
 void rsa_keypair_print(rsa_keypair_t *pair) {

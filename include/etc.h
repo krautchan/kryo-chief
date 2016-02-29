@@ -8,6 +8,7 @@
 
 typedef void (*freefunc_t)(void*);
 
+size_t bitstobytes(const size_t n_bits);
 size_t fp_size(FILE *fp);
 char *alloc_copy(const char *str);
 void xorblock(uint8_t *dat1, uint8_t *dat2, size_t len);

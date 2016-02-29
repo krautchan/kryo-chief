@@ -39,10 +39,17 @@ SV_OBJS=$(OBJ)/ccard.o \
 
 CTEST_OBJS=$(OBJ)/ccard.o $(OBJ)/cc_test.o $(OBJ)/dynarr.o $(OBJ)/etc.o
 AESTEST_OBJS=$(OBJ)/aes.o $(OBJ)/aestest.o
+RSATEST_OBJS=$(OBJ)/etc.o \
+			 $(OBJ)/oaep.o \
+			 $(OBJ)/rc4.o \
+			 $(OBJ)/rsa.o \
+			 $(OBJ)/rsa_io.o \
+			 $(OBJ)/rsatest.o\
+			 $(OBJ)/sha256.o \
 
 default: $(BIN)/client $(BIN)/server
 
-all: $(BIN)/aestest $(BIN)/client $(BIN)/server $(BIN)/cc_test
+all: $(BIN)/aestest $(BIN)/client $(BIN)/server $(BIN)/cc_test $(BIN)/rsatest
 
 $(BIN)/aestest: $(AESTEST_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
@@ -54,6 +61,9 @@ $(BIN)/server: $(SV_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS_SV) -o $@ $^
 
 $(BIN)/cc_test: $(CTEST_OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+$(BIN)/rsatest: $(RSATEST_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 .PHONY: clean

@@ -6,6 +6,11 @@
 
 #define RADIX 16
 
+size_t bitstobytes(const size_t n_bits) {
+	size_t out = n_bits / 8;
+	return out + ((n_bits % 8) ? 1 : 0);
+}
+
 size_t fp_size(FILE *fp) {
 	size_t startpos, out;
 	if(fp == NULL)

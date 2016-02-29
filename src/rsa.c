@@ -97,6 +97,7 @@ rsa_keypair_t *rsa_keypair_gen(const int n_bits, int *status) {
 	int n_tests;
 	mp_int phi;
 	rsa_keypair_t *out;
+	size_t actual_size = bitstobytes(n_bits) * 8;
 
 	if((*status = mp_init(&phi)) != MP_OKAY) return NULL;
 	if((out = malloc(sizeof(rsa_keypair_t))) == NULL) goto freephi;
@@ -109,11 +110,11 @@ rsa_keypair_t *rsa_keypair_gen(const int n_bits, int *status) {
 	if((*status = mp_init_multi(out->modulus, out->secret, out->p, out->q, NULL)) != MP_OKAY) goto freeq;
 	if((*status = mp_init_set_int(out->public, 65537)) != MP_OKAY) goto freeint;
 
-	n_tests = mp_prime_rabin_miller_trials(n_bits);
+	n_tests = mp_prime_rabin_miller_trials(actual_size);
 
 	do {
-		if((*status = mp_prime_random_ex(out->p, n_tests, n_bits / 2, LTM_PRIME_SAFE, getrand, NULL)) != MP_OKAY) goto freeall;
-		if((*status = mp_prime_random_ex(out->q, n_tests, n_bits / 2, LTM_PRIME_SAFE, getrand, NULL)) != MP_OKAY) goto freeall;
+		if((*status = mp_prime_random_ex(out->p, n_tests, actual_size / 2, LTM_PRIME_SAFE, getrand, NULL)) != MP_OKAY) goto freeall;
+		if((*status = mp_prime_random_ex(out->q, n_tests, actual_size / 2, LTM_PRIME_SAFE, getrand, NULL)) != MP_OKAY) goto freeall;
 		if((*status = mp_mul(out->p, out->q, out->modulus)) != MP_OKAY) goto freeall;
 	} while((*status = mp_good_pq(out->p, out->q, out->modulus)) == MP_NO);
 
@@ -121,6 +122,8 @@ rsa_keypair_t *rsa_keypair_gen(const int n_bits, int *status) {
 	if((*status = mp_invmod(out->public, &phi, out->secret)) != MP_OKAY) goto freeall;
 
 	rsa_dec_help(out);
+
+	out->ksize_bytes = actual_size / 8;
 
 	*status = MP_OKAY;
 	mp_clear(&phi);
