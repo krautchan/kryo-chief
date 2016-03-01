@@ -4,6 +4,7 @@
 #include <tommath.h>
 
 #include "etc.h"
+#include "oaep.h"
 #include "rsa_int.h"
 
 static int mp_good_pq(mp_int *p, mp_int *q, mp_int *n) {

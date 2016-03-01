@@ -3,6 +3,7 @@
 
 #include <tommath.h>
 
+#include "aes.h"
 #include "config.h"
 #include "etc.h"
 #include "oaep.h"
@@ -288,16 +289,16 @@ int rsa_keyid_fromserial(const uint8_t *data, uint8_t *out) {
 }
 
 int rsa_keypair_test(rsa_keypair_t *pair) {
-	uint8_t data[SHA256_SIZE];
+	uint8_t data[AES_KSIZE];
 	uint8_t *ct, *pt;
 	size_t ctlen, ptlen;
 	int ret = 0;
 	
-	if(getrand(data, SHA256_SIZE, NULL) == 0) {
+	if(getrand(data, AES_KSIZE, NULL) == 0) {
 		printf("getrand()");
 		return 0;
 	}
-	if((ct = rsa_enc_padded(data, SHA256_SIZE, pair, &ctlen)) == NULL) {
+	if((ct = rsa_enc_padded(data, AES_KSIZE, pair, &ctlen)) == NULL) {
 		printf("enc()");
 		return 0;
 	}
@@ -305,11 +306,11 @@ int rsa_keypair_test(rsa_keypair_t *pair) {
 		printf("dec()");
 		goto freect;
 	}
-	if(ptlen != SHA256_SIZE) {
+	if(ptlen != AES_KSIZE) {
 		printf("size()");
 		goto freept;
 	}
-	if(memcmp(pt, data, SHA256_SIZE) != 0) {
+	if(memcmp(pt, data, AES_KSIZE) != 0) {
 		printf("cmp()");
 		goto freept;
 	}
