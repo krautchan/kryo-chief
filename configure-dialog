@@ -1,0 +1,147 @@
+#!/bin/bash
+
+PKGNAME="TRH"
+BACKTITLE="Configure $PKGNAME"
+
+CONF_FILE=.config
+H_FILE="include/config.h"
+
+: ${DIALOG_OK=0}
+: ${DIALOG_CANCEL=1}
+: ${DIALOG_EXTRA=3}
+
+exec 3>&1
+
+if [ ! -e $CONF_FILE ]; then
+	echo noes
+	cp config_default $CONF_FILE
+fi
+
+function initvars {
+	source $CONF_FILE
+
+	DESC=( 	"Setup" \
+			"Server address                   " \
+			"Incoming port                    " \
+			"RSA key size                     " \
+			"Key repository                   " \
+			"Key file extension               " \
+			"Directory to encrypt             " \
+			"Encrypted file extension         " \
+			"Number of keys to pre-calculate  " \
+			"Resume when number falls below   " \
+			"Check remaining keys             " \
+			"Drop from RC4 output             " \
+			"Preallocate directory entries    " \
+			"Hash table size                  " \
+			"Restore defaults" )
+
+	VAL=(	"NONE" \
+			$CONFIG_SV_ADDR \
+			$CONFIG_SV_PORT \
+			$CONFIG_RSA_KSIZE \
+			$CONFIG_KEYDIR \
+			$CONFIG_KEYFILE_EXT \
+			$CONFIG_CRYPTDIR \
+			$CONFIG_CRYPTED_EXT \
+			$CONFIG_PREGEN_KEYS \
+			$CONFIG_REGEN_KEYS \
+			$CONFIG_KEYGEN_SLEEP \
+			$CONFIG_RC4_DROP \
+			$CONFIG_PREALLOC_FILES \
+			$CONFIG_KEYTAB_SIZE )
+}
+
+function menu {
+	CHOICE=$(dialog --title "${DESC[0]}"  --backtitle "$BACKTITLE" \
+				--extra-button --extra-label "Exit"\
+				--menu "" 20 70 14\
+				1 "${DESC[1]}(${VAL[1]})" \
+				2 "${DESC[2]}(${VAL[2]})" \
+				3 "${DESC[3]}(${VAL[3]})" \
+				4 "${DESC[4]}(${VAL[4]})" \
+				5 "${DESC[5]}(${VAL[5]})" \
+				6 "${DESC[6]}(${VAL[6]})" \
+				7 "${DESC[7]}(${VAL[7]})" \
+				8 "${DESC[8]}(${VAL[8]})" \
+				9 "${DESC[9]}(${VAL[9]})" \
+				10 "${DESC[10]}(${VAL[10]})" \
+				11 "${DESC[11]}(${VAL[11]})" \
+				12 "${DESC[12]}(${VAL[12]})" \
+				13 "${DESC[13]}(${VAL[13]})" \
+				14 "${DESC[14]}" 2>&1 1>&3)
+
+	BUTTON=$?
+}
+
+function choice {
+	BUTTON=$1
+	CHOICE=$2
+	case $BUTTON in
+		$DIALOG_OK)
+			if [ $CHOICE -eq 14 ]; then
+				cp config_default $CONF_FILE
+				initvars
+			else
+				DEFAULT=${VAL[$CHOICE]}
+				TITLE=${DESC[$CHOICE]}
+				VAL[$CHOICE]=$(dialog --inputbox "$TITLE" 8 30 "$DEFAULT" 2>&1 1>&3)
+			fi;;
+		$DIALOG_EXTRA)
+			saveconfig
+			echo "Changes saved to $CONF_FILE"
+			writeheader
+			echo "Config written to $H_FILE"
+			exit 0;;
+		$DIALOG_CANCEL)
+			echo "Changes discarded."
+			exit 0;;
+	esac
+}
+
+function saveconfig {
+	echo '#!/bin/bash' > $CONF_FILE
+	echo 'CONFIG_SV_ADDR='${VAL[1]} >> $CONF_FILE
+	echo 'CONFIG_SV_PORT='${VAL[2]} >> $CONF_FILE
+	echo 'CONFIG_RSA_KSIZE='${VAL[3]} >> $CONF_FILE
+	echo 'CONFIG_KEYDIR='${VAL[4]} >> $CONF_FILE
+	echo 'CONFIG_KEYFILE_EXT='${VAL[5]} >> $CONF_FILE
+	echo 'CONFIG_CRYPTDIR='${VAL[6]} >> $CONF_FILE
+	echo 'CONFIG_CRYPTED_EXT='${VAL[7]} >> $CONF_FILE
+	echo 'CONFIG_PREGEN_KEYS='${VAL[8]} >> $CONF_FILE
+	echo 'CONFIG_REGEN_KEYS='${VAL[9]} >> $CONF_FILE
+	echo 'CONFIG_KEYGEN_SLEEP='${VAL[10]} >> $CONF_FILE
+	echo 'CONFIG_RC4_DROP='${VAL[11]} >> $CONF_FILE
+	echo 'CONFIG_PREALLOC_FILES='${VAL[12]} >> $CONF_FILE
+	echo 'CONFIG_KEYTAB_SIZE='${VAL[13]} >> $CONF_FILE
+}
+
+function writeheader {
+    echo '#ifndef CONFIG_H_' > $H_FILE
+    echo '#define CONFIG_H_' >> $H_FILE
+	echo '#define CONFIG_SV_ADDR "'${VAL[1]}'"' >> $H_FILE
+    echo '#define CONFIG_SV_PORT '${VAL[2]} >> $H_FILE
+    echo '#define CONFIG_RSA_KSIZE '${VAL[3]} >> $H_FILE
+    echo '#define CONFIG_KEYDIR "'${VAL[4]}'"' >> $H_FILE
+    echo '#define CONFIG_KEYFILE_EXT "'${VAL[5]}'"' >> $H_FILE
+	echo '#define CONFIG_CRYPTDIR "'${VAL[6]}'"' >> $H_FILE
+	echo '#define CONFIG_CRYPTED_EXT "'${VAL[7]}'"' >> $H_FILE
+    echo '#define CONFIG_PREGEN_KEYS '${VAL[8]} >> $H_FILE
+    echo '#define CONFIG_REGEN_KEYS '${VAL[9]} >> $H_FILE
+    echo '#define CONFIG_KEYGEN_SLEEP '${VAL[10]} >> $H_FILE
+    echo '#define CONFIG_RC4_DROP '${VAL[11]} >> $H_FILE
+    echo '#define CONFIG_PREALLOC_FILES '${VAL[12]} >> $H_FILE
+    echo '#define CONFIG_KEYTAB_SIZE '${VAL[13]} >> $H_FILE
+
+	echo '#endif' >> $H_FILE
+}
+initvars
+
+while true; do
+	menu
+	choice $BUTTON $CHOICE
+done
+
+exit 0
+
+
