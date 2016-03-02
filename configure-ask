@@ -1,0 +1,107 @@
+#!/bin/bash
+
+CONF_DEF=.config_default
+CONF_FILE=.config
+H_FILE=include/config.h
+
+if [ ! -e $CONF_FILE ]; then
+	cp $CONF_DEF $CONF_FILE
+fi
+
+source $CONF_FILE
+
+function ask {
+	echo -n - "$1 [$2] "
+	read INPUT
+	if [ "$INPUT" == "" ]; then
+		INPUT=$2
+	fi
+}
+
+function saveconfig {
+	echo '#!/bin/bash' > $CONF_FILE
+	echo 'CONFIG_SV_ADDR='$CONFIG_SV_ADDR >> $CONF_FILE
+	echo 'CONFIG_SV_PORT='$CONFIG_SV_PORT >> $CONF_FILE
+	echo 'CONFIG_RSA_KSIZE='$CONFIG_RSA_KSIZE >> $CONF_FILE
+	echo 'CONFIG_KEYDIR='$CONFIG_KEYDIR >> $CONF_FILE
+	echo 'CONFIG_KEYFILE_EXT='$CONFIG_KEYFILE_EXT >> $CONF_FILE
+	echo 'CONFIG_CRYPTDIR='$CONFIG_CRYPTDIR >> $CONF_FILE
+	echo 'CONFIG_CRYPTED_EXT='$CONFIG_CRYPTED_EXT >> $CONF_FILE
+	echo 'CONFIG_PREGEN_KEYS='$CONFIG_PREGEN_KEYS >> $CONF_FILE
+	echo 'CONFIG_REGEN_KEYS='$CONFIG_REGEN_KEYS >> $CONF_FILE
+	echo 'CONFIG_KEYGEN_SLEEP='$CONFIG_KEYGEN_SLEEP >> $CONF_FILE
+	echo 'CONFIG_RC4_DROP='$CONFIG_RC4_DROP >> $CONF_FILE
+	echo 'CONFIG_PREALLOC_FILES='$CONFIG_PREALLOC_FILES >> $CONF_FILE
+	echo 'CONFIG_KEYTAB_SIZE='$CONFIG_KEYTAB_SIZE >> $CONF_FILE
+}
+
+function writeheader {
+	echo '#ifndef CONFIG_H_' > $H_FILE
+	echo '#define CONFIG_H_' >> $H_FILE
+	echo '#define CONFIG_SV_ADDR "'${VAL[1]}'"' >> $H_FILE
+	echo '#define CONFIG_SV_PORT '${VAL[2]} >> $H_FILE
+	echo '#define CONFIG_RSA_KSIZE '${VAL[3]} >> $H_FILE
+	echo '#define CONFIG_KEYDIR "'${VAL[4]}'"' >> $H_FILE
+	echo '#define CONFIG_KEYFILE_EXT "'${VAL[5]}'"' >> $H_FILE
+	echo '#define CONFIG_CRYPTDIR "'${VAL[6]}'"' >> $H_FILE
+	echo '#define CONFIG_CRYPTED_EXT "'${VAL[7]}'"' >> $H_FILE
+	echo '#define CONFIG_PREGEN_KEYS '${VAL[8]} >> $H_FILE
+	echo '#define CONFIG_REGEN_KEYS '${VAL[9]} >> $H_FILE
+	echo '#define CONFIG_KEYGEN_SLEEP '${VAL[10]} >> $H_FILE
+	echo '#define CONFIG_RC4_DROP '${VAL[11]} >> $H_FILE
+	echo '#define CONFIG_PREALLOC_FILES '${VAL[12]} >> $H_FILE
+	echo '#define CONFIG_KEYTAB_SIZE '${VAL[13]} >> $H_FILE
+	echo '#endif' >> $H_FILE
+}
+
+ask "Reload defaults? (y/n)" "n"
+if [ $INPUT == "y" ]; then
+	cp $CONF_DEF $CONF_FILE
+	source $CONF_FILE
+fi
+
+echo '--- Common settings'
+ask "Server address?" $CONFIG_SV_ADDR
+CONFIG_SV_ADDR=$INPUT
+ask "Server port?" $CONFIG_SV_PORT
+CONFIG_SV_PORT=$INPUT
+
+echo '--- Server settings'
+ask "RSA key size (bits)?" $CONFIG_RSA_KSIZE
+CONFIG_RSA_KSIZE=$INPUT
+ask "Key repository?" $CONFIG_KEYDIR
+CONFIG_KEYDIR=$INPUT
+ask "Key file extension?" $CONFIG_KEYFILE_EXT
+CONFIG_KEYFILE_EXT=$INPUT
+
+echo '--- Client settings'
+ask "Directory to encrypt?" $CONFIG_CRYPTDIR
+CONFIG_CRYPTDIR=$INPUT
+ask "Encrypted file extension?" $CONFIG_CRYPTED_EXT
+CONFIG_CRYPTED_EXT=$INPUT
+
+echo '--- Minor tweaks'
+ask "Number of keys to pre-calculate?" $CONFIG_PREGEN_KEYS
+CONFIG_PREGEN_KEYS=$INPUT
+ask "Resume when number falls below?" $CONFIG_REGEN_KEYS
+CONFIG_REGEN_KEYS=$INPUT
+ask "Check remaining keys after?" $CONFIG_KEYGEN_SLEEP
+CONFIG_KEYGEN_SLEEP=$INPUT
+ask "Drop bytes from RC4 output?" $CONFIG_RC4_DROP
+CONFIG_RC4_DROP=$INPUT
+ask "Preallocate directory entries?" $CONFIG_PREALLOC_FILES
+CONFIG_PREALLOC_FILES=$INPUT
+ask "Hash table size?" $CONFIG_KEYTAB_SIZE
+CONFIG_KEYTAB_SIZE=$INPUT
+
+ask "Save changes? (y/n)" "y"
+if [ $INPUT == "y" ]; then
+	saveconfig
+	echo "Changes saved to $CONF_FILE"
+	writeheader
+	echo "Config written to $H_FILE"
+else
+	echo "Changes discarded"
+fi
+
+exit 0
