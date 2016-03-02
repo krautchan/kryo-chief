@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -13,6 +14,8 @@
 
 typedef struct keydb_t {
 	htab_t *keytable;
+	htab_t *issued_keys;
+	htab_t *released_keys;
 	uint32_t n_pregen, n_regen, n_keys;
 	const char *basedir;
 } keydb_t;
@@ -121,7 +124,7 @@ static void *generator_thread(void *arg) {
 		}
 
 		while(keydb.n_keys < keydb.n_pregen) {
-			printf("generator_thread(): Need to generate more keys. (I have %lu/%lu)\n", keydb.n_keys, keydb.n_pregen);
+			printf("generator_thread(): Need to generate more keys. (I have %" PRIu32 "/%" PRIu32 ")\n", keydb.n_keys, keydb.n_pregen);
 			if((newent = mknewpair(&status)) != NULL) {
 				saveent(newent, keyid);
 				keydb_insert(newent, keyid);
@@ -173,16 +176,17 @@ closefp:
 	return ret;
 }
 
-static void read_dir(const char *basedir) {
+static int read_dir(const char *basedir) {
 	size_t i;
 	fslist_t *list;
 	
-	if((list = fslist_scan(basedir)) == NULL) return;
+	if((list = fslist_scan(basedir)) == NULL) return 0;
 
 	for(i = 0; i < list->n; i++)
 		read_keyfile(list->filename[i]);
 
 	fslist_free(list);
+	return 1;
 }
 
 static void free_dbent(void *data) {
@@ -202,20 +206,33 @@ int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_re
 
 	pthread_mutex_init(&db_mutex, NULL);
 
-	if((keydb.keytable = htab_new(CONFIG_KEYTAB_SIZE, NULL, free_dbent)) == NULL) {
-		printf("keydb_init(): htab_new() failed!\n");
+	if((keydb.keytable = htab_new(CONFIG_KEYTAB_SIZE, NULL, free_dbent)) == NULL)
 		return 0;
-	}
+	if((keydb.issued_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL)
+		goto freetab;
+	if((keydb.released_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL)
+		goto freeissued;
 
 	printf("keydb_init(): Scanning direcotory '%s'...\n", basedir);
-	read_dir(basedir);
-	printf("keydb_init(): Got %lu keys. \n", keydb.n_keys);
+	if(read_dir(basedir) == 0) goto freereleased;
+
+	printf("keydb_init(): Got %" PRIu32 " keys. \n", keydb.n_keys);
 
 	return 1;
+
+freereleased:
+	htab_free(keydb.released_keys);
+freeissued:
+	htab_free(keydb.issued_keys);
+freetab:
+	htab_free(keydb.keytable);
+	return 0;
 }
 
 void keydb_free(void) {
 	htab_free(keydb.keytable);
+	htab_free(keydb.issued_keys);
+	htab_free(keydb.released_keys);
 	pthread_mutex_destroy(&db_mutex);
 }
 

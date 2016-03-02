@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
 	for(i = 1; i < argc; i++) {
 		keysize = atoi(argv[i]);
 		if(keysize < minsize) {
-			printf("Adjusting %d to %d bits. ", keysize, minsize);
+			printf("Adjusting %lu to %lu bits. ", keysize, minsize);
 			keysize = minsize;
 		}
 

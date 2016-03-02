@@ -13,6 +13,7 @@ CC=gcc
 CL_OBJS=$(OBJ)/aes.o \
 		$(OBJ)/ccard.o \
 		$(OBJ)/client.o \
+		$(OBJ)/cl_net.o \
 		$(OBJ)/dynarr.o \
 		$(OBJ)/etc.o \
 		$(OBJ)/filecrypt.o \
@@ -35,6 +36,7 @@ SV_OBJS=$(OBJ)/ccard.o \
 		$(OBJ)/rsa_io.o \
 		$(OBJ)/server.o \
 		$(OBJ)/sv_keydb.o \
+		$(OBJ)/sv_net.o \
 		$(OBJ)/sha256.o
 
 CTEST_OBJS=$(OBJ)/ccard.o $(OBJ)/cc_test.o $(OBJ)/dynarr.o $(OBJ)/etc.o
