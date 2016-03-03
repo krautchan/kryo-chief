@@ -1,4 +1,5 @@
 #include <inttypes.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,6 +10,7 @@
 #include "etc.h"
 #include "fslist.h"
 #include "htab.h"
+#include "queue.h"
 #include "rsa_io.h"
 #include "sha256.h"
 
@@ -16,6 +18,7 @@ typedef struct keydb_t {
 	htab_t *keytable;
 	htab_t *issued_keys;
 	htab_t *released_keys;
+	queue_t *available_keys;
 	uint32_t n_pregen, n_regen, n_keys;
 	const char *basedir;
 } keydb_t;
@@ -97,13 +100,17 @@ static dbent_t *mknewpair(int *status) {
 	return out;	
 }
 
-static int keydb_insert(dbent_t *newent, uint8_t *keyid) {
+static int keydb_insert(dbent_t *newent, uint8_t *keyid, const int issued) {
 	int ret;
 	
 	pthread_mutex_lock(&db_mutex);
 	
-	if((ret = htab_insert(keydb.keytable, keyid, SHA256_SIZE, newent)) == 1)
-		keydb.n_keys++;
+	if((ret = htab_insert(keydb.keytable, keyid, SHA256_SIZE, newent)) == 1) {
+		if(issued != 1) {
+			queue_push(keydb.available_keys, newent);
+			keydb.n_keys++;
+		}
+	}
 
 	pthread_mutex_unlock(&db_mutex);
 	
@@ -127,7 +134,7 @@ static void *generator_thread(void *arg) {
 			printf("generator_thread(): Need to generate more keys. (I have %" PRIu32 "/%" PRIu32 ")\n", keydb.n_keys, keydb.n_pregen);
 			if((newent = mknewpair(&status)) != NULL) {
 				saveent(newent, keyid);
-				keydb_insert(newent, keyid);
+				keydb_insert(newent, keyid, 0);
 			}
 			if(keydb.n_keys == keydb.n_pregen)
 				printf("generator_thread(): Precalculation finished.\n");
@@ -155,11 +162,16 @@ static int read_keyfile(const char *filename) {
 	if((newent = malloc(sizeof(dbent_t))) == NULL) goto freepair;
 	if(rsa_keyid_fromserial(data, keyid) == 0) goto freenew;
 
+	if(htab_lookup(keydb.issued_keys, keyid, SHA256_SIZE) != NULL) {
+		printf("Issued! ");
+		newent->issued = 1;
+	} else {
+		newent->issued = 0;
+	}
 	newent->pair = newpair;
-	newent->issued = 0;
 	newent->released = 0;
 
-	if(keydb_insert(newent, keyid) == 0) goto freenew;
+	if(keydb_insert(newent, keyid, newent->issued) == 0) goto freenew;
 
 	ret = 1;
 
@@ -198,7 +210,29 @@ static void free_dbent(void *data) {
 	free(entry);
 }
 
+static void read_issued(const char *filename) {
+	FILE *fp;
+	uint8_t data[SHA256_SIZE];
+	int ret, i;
+
+	if((fp = fopen(filename, "rb")) == NULL) return;
+
+	while(!feof(fp)) {
+		if((ret = fread(data, SHA256_SIZE, 1, fp)) == 1) {
+			printf("Issued: ");
+			for(i = 0; i < SHA256_SIZE; i++)
+				printf("%02x", data[i]);
+			printf("\n");
+			htab_insert(keydb.issued_keys, data, SHA256_SIZE, data);
+		}
+	}
+
+	fclose(fp);
+}
+
 int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_regen) {
+	char keys_issued[PATH_MAX], keys_released[PATH_MAX];
+
 	keydb.n_keys = 0;
 	keydb.n_pregen = n_pregen;
 	keydb.n_regen = n_regen;
@@ -212,10 +246,13 @@ int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_re
 		goto freetab;
 	if((keydb.released_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL)
 		goto freeissued;
+	if((keydb.available_keys = queue_new()) == NULL)
+		goto freereleased;
+
+	read_issued("etc/keys_issued");
 
 	printf("keydb_init(): Scanning direcotory '%s'...\n", basedir);
 	if(read_dir(basedir) == 0) goto freereleased;
-
 	printf("keydb_init(): Got %" PRIu32 " keys. \n", keydb.n_keys);
 
 	return 1;
@@ -233,6 +270,7 @@ void keydb_free(void) {
 	htab_free(keydb.keytable);
 	htab_free(keydb.issued_keys);
 	htab_free(keydb.released_keys);
+	queue_free(keydb.available_keys);
 	pthread_mutex_destroy(&db_mutex);
 }
 

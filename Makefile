@@ -31,6 +31,7 @@ SV_OBJS=$(OBJ)/ccard.o \
 		$(OBJ)/hfuncs.o \
 		$(OBJ)/htab.o \
 		$(OBJ)/oaep.o \
+		$(OBJ)/queue.o \
 		$(OBJ)/rc4.o \
 		$(OBJ)/rsa.o \
 		$(OBJ)/rsa_io.o \
