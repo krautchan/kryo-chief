@@ -6,6 +6,39 @@
 
 #define RADIX 16
 
+union endtest_t {
+	uint32_t i;
+	uint8_t j[4];
+};
+
+void inttoarr(const uint32_t in, uint8_t *out) {
+	union endtest_t test;
+	test.i = 1;
+
+	if(test.j[0] == test.i) {
+		out[3] = (in >> 24) & 0xff;
+		out[2] = (in >> 16) & 0xff;
+		out[1] = (in >> 8) & 0xff;
+		out[0] = in & 0xff;
+	} else {
+		out[0] = (in >> 24) & 0xff;
+		out[1] = (in >> 16) & 0xff;
+		out[2] = (in >> 8) & 0xff;
+		out[3] = in & 0xff;
+	}	
+}
+
+uint32_t arrtoint(const uint8_t *in) {
+	union endtest_t test;
+	test.i = 1;
+	
+	if(test.j[0] == test.i) {
+		return (in[3] << 24) | (in[2] << 16) | (in[1] << 8) | in[0];
+	} else {
+		return (in[0] << 24) | (in[1] << 16) | (in[2] << 8) | in[3];
+	}
+}
+
 size_t bitstobytes(const size_t n_bits) {
 	size_t out = n_bits / 8;
 	return out + ((n_bits % 8) ? 1 : 0);

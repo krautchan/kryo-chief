@@ -1,6 +1,8 @@
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
 
+#define		NET_PACKET_MAX			128
+
 #define		NET_OK					0x00
 #define		NET_ERROR				0x01
 

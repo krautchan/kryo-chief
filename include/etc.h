@@ -8,6 +8,8 @@
 
 typedef void (*freefunc_t)(void*);
 
+void inttoarr(const uint32_t in, uint8_t *out);
+uint32_t arrtoint(uint8_t *in);
 size_t bitstobytes(const size_t n_bits);
 size_t fp_size(FILE *fp);
 char *alloc_copy(const char *str);
