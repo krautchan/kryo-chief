@@ -74,7 +74,7 @@ static void init_whitelist(const char *src) {
 	fclose(fp);
 }
 
-static int checklist(const char *num) {
+static int checklist(const char *num, size_t len) {
 	size_t n, i;
 	char *list_entry;
 	whitelist_entry_t *whitelist_entry;
@@ -92,7 +92,7 @@ static int checklist(const char *num) {
 		list_entry = whitelist_entry->prefix;
 
 		if(!strncmp(num, list_entry, strlen(list_entry))) {
-			if(whitelist_entry->flags & (1 << strlen(num)))
+			if(whitelist_entry->flags & (1 << len))
 				return CC_OK;
 			else
 				return CC_LENGTH;
@@ -124,7 +124,7 @@ int cc_check(const char *num, const size_t len) {
 		initialized = 1;
 	}
 
-	ret = checklist(num);
+	ret = checklist(num, len);
 	if((ret != CC_OK) && (ret != CC_UNSURE))
 		return ret;
 
