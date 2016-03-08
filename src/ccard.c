@@ -12,22 +12,43 @@ static int initialized = 0;
 static dynarr_t *blacklist = NULL;
 static dynarr_t *whitelist = NULL;
 
+typedef struct blacklist_entry_t {
+	uint8_t *prefix;
+	size_t len;
+} blacklist_entry_t;
+
 typedef struct whitelist_entry_t {
-	char *prefix;
+	uint8_t *prefix;
+	size_t len;
 	uint32_t flags;
 } whitelist_entry_t;
 
+static void free_blacklist(void *data) {
+	blacklist_entry_t *ent = data;
+	free(ent->prefix);
+}
+
 static void init_blacklist(const char *src) {
 	FILE *fp;
-	char *newent;
+	char *input;
+	size_t len;
+	blacklist_entry_t listent;
 
-	if((blacklist = dynarr_new(sizeof(char*), PREALLOC_LIST, NULL)) == NULL) return;
+	if((blacklist = dynarr_new(sizeof(blacklist_entry_t), PREALLOC_LIST, free_blacklist)) == NULL) return;
 	if((fp = fopen(src, "r")) == NULL) return;
 
-	while(!feof(fp) && (newent = line_in(fp))) {
-		if(strlen(newent) > 0)
-			dynarr_add(blacklist, newent);
-		free(newent);
+	while(!feof(fp) && (input = line_in(fp))) {
+		if((len = strlen(input)) > 0) {
+			if((listent.prefix = malloc(len)) == NULL) {
+				free(input);
+				continue;
+			}
+			memcpy(listent.prefix, input, len);
+			listent.len = len;
+			dynarr_add(blacklist, &listent);
+
+		}
+		free(input);
 	}
 
 	fclose(fp);
@@ -40,20 +61,22 @@ static void free_whitelist(void *data) {
 
 static void init_whitelist(const char *src) {
 	FILE *fp;
-	char *newent, *tab, *space;
-	uint32_t flags, pos;	
+	char *input, *tab, *space;
+	uint32_t flags, pos;
+	size_t len;
 	whitelist_entry_t listent;
 
 	if((whitelist = dynarr_new(sizeof(whitelist_entry_t), PREALLOC_LIST, free_whitelist)) == NULL) return;
 	if((fp = fopen(src, "r")) == NULL) return;
 
-	while(!feof(fp) && (newent = line_in(fp))) {
-		if(strlen(newent) == 0) 
-			free(newent);
+	while(!feof(fp) && (input = line_in(fp))) {
+		if(strlen(input) == 0) 
+			free(input);
 		else {
-			if((tab = strchr(newent, '\t')) == NULL)
+			if((tab = strchr(input, '\t')) == NULL)
 				continue;
 
+			len = tab - input;
 			*tab = '\0';
 			tab++;
 
@@ -65,9 +88,17 @@ static void init_whitelist(const char *src) {
 				tab = space + 1;
 			}
 
-			listent.prefix = newent;
+			if((listent.prefix = malloc(len)) == NULL) {
+				free(input);
+				continue;
+			}
+
+			memcpy(listent.prefix, input, len);
+			listent.len = len;
 			listent.flags = flags;
 			dynarr_add(whitelist, &listent);
+
+			free(input);
 		}
 	}
 
@@ -76,22 +107,20 @@ static void init_whitelist(const char *src) {
 
 static int checklist(const char *num, size_t len) {
 	size_t n, i;
-	char *list_entry;
 	whitelist_entry_t *whitelist_entry;
+	blacklist_entry_t *blacklist_entry;
 
 	n = dynarr_get_size(blacklist);
 	for(i = 0; i < n; i++) {
-		list_entry = dynarr_get_index(blacklist, i);
-		if(!strncmp(num, list_entry, strlen(list_entry)))
+		blacklist_entry = dynarr_get_index(blacklist, i);
+		if(!memcmp(num, blacklist_entry->prefix, blacklist_entry->len))
 			return CC_BLIST;
 	}
 
 	n = dynarr_get_size(whitelist);
 	for(i = 0; i < n; i++) {
 		whitelist_entry = dynarr_get_index(whitelist, i);
-		list_entry = whitelist_entry->prefix;
-
-		if(!strncmp(num, list_entry, strlen(list_entry))) {
+		if(!memcmp(num, whitelist_entry->prefix, whitelist_entry->len)) {
 			if(whitelist_entry->flags & (1 << len))
 				return CC_OK;
 			else
