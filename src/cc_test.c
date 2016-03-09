@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
 	int i, chk;
 
 	for(i = 1; i < argc; i++) {
-		chk = cc_check(argv[i], strlen(argv[i]));
+		chk = cc_check((uint8_t*)argv[i], strlen(argv[i]));
 		printf("%s: ", argv[i]);
 
 		switch(chk) {

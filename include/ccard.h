@@ -1,6 +1,7 @@
 #ifndef CCARD_H_
 #define CCARD_H_
 
+#include <stdint.h>
 #include <stdlib.h>
 
 #define CC_OK		1
@@ -11,6 +12,6 @@
 #define CC_CKSUM	-4
 
 void cc_freelists(void);
-int cc_check(const char *num, const size_t len);
+int cc_check(const uint8_t *num, const size_t len);
 
 #endif

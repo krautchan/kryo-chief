@@ -105,7 +105,7 @@ static void init_whitelist(const char *src) {
 	fclose(fp);
 }
 
-static int checklist(const char *num, size_t len) {
+static int checklist(const uint8_t *num, size_t len) {
 	size_t n, i;
 	whitelist_entry_t *whitelist_entry;
 	blacklist_entry_t *blacklist_entry;
@@ -141,7 +141,7 @@ void cc_freelists(void) {
 	initialized = 0;
 }
 
-int cc_check(const char *num, const size_t len) {
+int cc_check(const uint8_t *num, const size_t len) {
 	size_t i;
 	char c, check;
 	uint32_t sum = 0;
