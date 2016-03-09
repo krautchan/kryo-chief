@@ -37,7 +37,6 @@ rsa_keypair_t *issue_key(void) {
 	rsa_keypair_t *out = NULL;
 	dbent_t *issue;
 	FILE *fp;
-	int i;
 
 	pthread_mutex_lock(&db_mutex);
 
@@ -150,7 +149,7 @@ static void *generator_thread(void *arg) {
 		}
 
 		while(n_keys < keydb.n_pregen) {
-			printf("generator_thread(): Need to generate more keys. (I have %lu/%lu)\n", n_keys, keydb.n_pregen);
+			printf("generator_thread(): Need to generate more keys. (I have %zd/%"PRIu32")\n", n_keys, keydb.n_pregen);
 			
 			if((newent = mknewpair(&status)) != NULL) {
 				pthread_mutex_lock(&db_mutex);
@@ -199,6 +198,7 @@ static int read_keyfile(const char *filename) {
 	if(keydb_insert(newent, newent->issued) == 0) goto freenew;
 	pthread_mutex_unlock(&db_mutex);
 
+	printf("%s\n", newent->issued ? " (Issued)" : "");
 	ret = 1;
 
 freenew:
@@ -211,7 +211,6 @@ closefp:
 	fclose(fp);
 
 	printf("%s", (ret == 0) ? "Failed!" : "OK!");
-	printf("%s\n", newent->issued ? " (Issued)" : "");
 	return ret;
 }
 
