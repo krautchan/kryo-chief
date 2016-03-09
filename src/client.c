@@ -152,7 +152,7 @@ static uint8_t *local_seckey(const char *token, const uint8_t *key_id, size_t *l
 	uint8_t *serial, mykey_id[32], *out = NULL;
 
 	*status = TOKEN_REJECTED;
-	if(cc_check(token, strlen(token)) != CC_OK) return NULL;
+	if(cc_check((uint8_t*)token, strlen(token)) != CC_OK) return NULL;
 	cc_freelists();
 	*status = GENERIC_ERROR;
 	if((fp = fopen("backup.bin", "rb")) == NULL) return NULL;
