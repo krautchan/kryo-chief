@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <tommath.h>
 
-typedef struct rsa_keypair_t {
+struct rsa_keypair_t {
 	mp_int *p, *q;
 	mp_int *public, *secret;
 	mp_int *modulus;
