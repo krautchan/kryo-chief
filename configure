@@ -96,7 +96,7 @@ function choice {
 			fi
 			;;
 		$DIALOG_EXTRA)
-			case "$VAL[4]" in
+			case "${VAL[4]}" in
 				*/)
 					VAL[4]=${VAL[4]}
 					;;
