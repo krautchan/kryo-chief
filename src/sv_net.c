@@ -67,7 +67,7 @@ static int setpass(void) {
 	return 1;
 }
 
-static int reply(int socket, uint8_t msgtype, const uint8_t *data, const uint32_t len) {
+static int reply(int socket, const uint8_t msgtype, const uint8_t *data, const uint32_t len) {
 	uint8_t *reply, paksize[4];
 	uint32_t replen;
 	int ret = 0;
@@ -105,7 +105,7 @@ int verify_token(const uint8_t *token, const size_t tlen) {
 	return TOKEN_FAIL;
 }
 
-static int dispatch_packet(int socket, const uint8_t *data, const uint32_t len) {
+static void dispatch_packet(int socket, const uint8_t *data, const uint32_t len) {
 	uint8_t msgtype = data[0];
 	rsa_keypair_t *pair;
 	uint8_t *serial;
@@ -176,12 +176,10 @@ static int dispatch_packet(int socket, const uint8_t *data, const uint32_t len) 
 		default:
 			goto reterr;
 	}
-
-	return 1;
+	return;
 
 reterr:
 	reply(socket, NET_ERROR, NULL, 0);
-	return 0;
 }
 
 static void *net_thread(void *arg) {
@@ -213,18 +211,19 @@ static void *net_thread(void *arg) {
 					reply(info.acc_sock, NET_ERROR, NULL, 0);
 					continue;
 				}
-				recv(info.acc_sock, data, paksize, 0);
 
-				if(dispatch_packet(info.acc_sock, data, paksize) == 0)
-					goto end;
+				recv(info.acc_sock, data, paksize, 0);
+				dispatch_packet(info.acc_sock, data, paksize);
 				free(data);
 			}
 		}
 	}
-end:
+
 	shutdown(info.acc_sock, 2);
 
-	pthread_exit(NULL);
+	if(sv_shutdown)
+		pthread_exit(NULL);
+
 	return NULL;
 }
 

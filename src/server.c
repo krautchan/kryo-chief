@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -12,6 +13,8 @@ extern int sv_shutdown;
 
 int main(void) {
 	int listen_socket;
+
+	signal(SIGPIPE, SIG_IGN);
 
 	keydb_init(CONFIG_DATADIR "keystore", CONFIG_PREGEN_KEYS, CONFIG_REGEN_KEYS);
 
