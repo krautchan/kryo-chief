@@ -197,9 +197,7 @@ static void *generator_thread(void *arg) {
 	while(genthread_shutdown == 0) {
 		n_keys = queue_get_size(keydb.available_keys);
 
-		printf("Available: %lu\n", n_keys);
 		if(n_keys > keydb.n_regen) {
-			printf("sleeping\n");
 			sleep(CONFIG_KEYGEN_SLEEP);
 			continue;
 		}
