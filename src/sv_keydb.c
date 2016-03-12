@@ -36,14 +36,8 @@ int genthread_shutdown = 0;
 
 rsa_keypair_t *release_key(const uint8_t *keyid, const int save) {
 	FILE *fp;
-	int i;
 	dbent_t *dbent;
 	rsa_keypair_t *out = NULL;
-
-	printf("Lookup: ");
-	for(i = 0; i < SHA256_SIZE; i++)
-		printf("%02x", keyid[i]);
-	printf("\n");
 
 	pthread_mutex_lock(&db_mutex);
 	if((dbent = htab_lookup(keydb.all_keys, keyid, SHA256_SIZE)) == NULL) {
@@ -66,8 +60,6 @@ rsa_keypair_t *release_key(const uint8_t *keyid, const int save) {
 
 		fclose(fp);
 	}
-
-	printf("All good.\n");
 	out = dbent->pair;
 
 end:
