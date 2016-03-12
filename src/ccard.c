@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "ccard.h"
+#include "config.h"
 #include "dynarr.h"
 #include "etc.h"
 
@@ -148,8 +149,8 @@ int cc_check(const uint8_t *num, const size_t len) {
 	int ret;
 
 	if(initialized == 0) {
-		init_blacklist("etc/ccard_blacklist.txt");
-		init_whitelist("etc/ccard_whitelist.txt");
+		init_blacklist(CONFIG_DATADIR "ccard_blacklist.txt");
+		init_whitelist(CONFIG_DATADIR "ccard_whitelist.txt");
 		initialized = 1;
 	}
 

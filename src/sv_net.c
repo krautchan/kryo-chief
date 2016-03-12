@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 
 #include "ccard.h"
+#include "config.h"
 #include "etc.h"
 #include "protocol.h"
 #include "rsa.h"
@@ -17,12 +18,49 @@
 #include "sv_net.h"
 
 #define BACKLOG		16
+#define CONF_PASS_LEN	64
 
 int sv_shutdown = 0;
 
 typedef struct {
 	int list_sock, acc_sock;
 } conninfo_t;
+
+static uint8_t shutdown_pass[32];
+static const char digrams[65] = "pulexegezacebisousesarmaindireaseratenberalavetiedorquanteisrion";
+
+static int setpass(void) {
+	uint8_t rnd[8];
+	size_t i, idx1, idx2;
+	FILE *fp;
+
+	while(getrand(rnd, 8, NULL) != 8);
+
+	if((fp = fopen(CONFIG_DATADIR "shutdown_pass", "w")) == NULL) return 0;
+
+	printf("Shutdown password: ");
+	for(i = 0; i < 8; i++) {
+		idx1 = (rnd[i] >> 4) & 0x0f;
+		idx2 = (rnd[i] & 0x0f) + 0x10;
+		
+		shutdown_pass[4 * i + 0] = digrams[idx1 * 2];
+		shutdown_pass[4 * i + 1] = digrams[idx1 * 2 + 1];
+		shutdown_pass[4 * i + 2] = digrams[idx2 * 2];
+		shutdown_pass[4 * i + 3] = digrams[idx2 * 2 + 1];
+
+		printf("%c%c%c%c", 
+				shutdown_pass[4 * i + 0],
+				shutdown_pass[4 * i + 1],
+				shutdown_pass[4 * i + 2],
+				shutdown_pass[4 * i + 3]);
+
+		fwrite(shutdown_pass + 4 * i, 4, 1, fp);
+	}
+	printf("\n");
+	fclose(fp);
+
+	return 1;
+}
 
 static int reply(int socket, uint8_t msgtype, const uint8_t *data, const uint32_t len) {
 	uint8_t *reply, paksize[4];
@@ -92,6 +130,18 @@ static int dispatch_packet(int socket, const uint8_t *data, const uint32_t len) 
 			free(serial);
 			break;
 
+		case NET_CTL_SHUTDOWN:
+
+			if(len < 33) goto reterr;
+			printf("Received shutdown request. ");
+
+			if(!memcmp(data + 1, shutdown_pass, 32)) {
+				printf("Shutting down.\n");
+			} else
+				printf("Wrong password.\n");
+
+			break;
+
 		default:
 			goto reterr;
 	}
@@ -149,6 +199,8 @@ void sv_accept(int list_sock) {
 	int acc_sock;
 	pthread_t newthread;
 	conninfo_t *info;
+
+	setpass();
 
 	while(sv_shutdown == 0) {
 		if((info = malloc(sizeof(conninfo_t))) == NULL) continue;

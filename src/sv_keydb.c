@@ -56,7 +56,7 @@ rsa_keypair_t *release_key(const uint8_t *keyid) {
 		goto end;
 	}
 
-	if((fp = fopen("etc/keys_released", "ab")) == NULL) {
+	if((fp = fopen(CONFIG_DATADIR "keys_released", "ab")) == NULL) {
 		printf("fopen() failed!\n");
 		goto end;
 	}
@@ -90,7 +90,7 @@ rsa_keypair_t *issue_key(void) {
 		goto fail;
 	}
 
-	if((fp = fopen("etc/keys_issued", "ab")) == NULL) {
+	if((fp = fopen(CONFIG_DATADIR "keys_issued", "ab")) == NULL) {
 		queue_push(keydb.available_keys, issue);
 		out = NULL;
 		goto fail;
@@ -321,8 +321,8 @@ int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_re
 	if((keydb.available_keys = queue_new()) == NULL)
 		goto freeall;
 
-	read_kidlist(CONFIG_ISSUED, keydb.issued_keys);
-	read_kidlist(CONFIG_RELEASED, keydb.released_keys);
+	read_kidlist(CONFIG_DATADIR "keys_issued", keydb.issued_keys);
+	read_kidlist(CONFIG_DATADIR "keys_released", keydb.released_keys);
 
 	printf("keydb_init(): Scanning direcotory '%s'...\n", basedir);
 	if(read_dir(basedir) == 0) goto freeall;

@@ -11,7 +11,7 @@
 int main(void) {
 	int listen_socket;
 
-	keydb_init(CONFIG_KEYDIR, CONFIG_PREGEN_KEYS, CONFIG_REGEN_KEYS);
+	keydb_init(CONFIG_DATADIR "keystore", CONFIG_PREGEN_KEYS, CONFIG_REGEN_KEYS);
 
 	if((listen_socket = sv_listen(CONFIG_SV_PORT)) == INVALID_SOCKET) {
 		printf("listen() failed!\n");
