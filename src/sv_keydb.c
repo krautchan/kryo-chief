@@ -34,7 +34,7 @@ static pthread_mutex_t db_mutex;
 
 int genthread_shutdown = 0;
 
-rsa_keypair_t *release_key(const uint8_t *keyid) {
+rsa_keypair_t *release_key(const uint8_t *keyid, const int save) {
 	FILE *fp;
 	int i;
 	dbent_t *dbent;
@@ -56,14 +56,16 @@ rsa_keypair_t *release_key(const uint8_t *keyid) {
 		goto end;
 	}
 
-	if((fp = fopen(CONFIG_DATADIR "keys_released", "ab")) == NULL) {
-		printf("fopen() failed!\n");
-		goto end;
+	if(save == 1) {
+		if((fp = fopen(CONFIG_DATADIR "keys_released", "ab")) == NULL) {
+			printf("fopen() failed!\n");
+			goto end;
+		}
+
+		fwrite(keyid, SHA256_SIZE, 1, fp);
+
+		fclose(fp);
 	}
-
-	fwrite(keyid, SHA256_SIZE, 1, fp);
-
-	fclose(fp);
 
 	printf("All good.\n");
 	out = dbent->pair;
@@ -71,6 +73,20 @@ rsa_keypair_t *release_key(const uint8_t *keyid) {
 end:
 	pthread_mutex_unlock(&db_mutex);
 	return out;
+}
+
+int is_released(const uint8_t *keyid) {
+	dbent_t *dbent;
+	int ret = 0;
+
+	pthread_mutex_lock(&db_mutex);
+
+	if((dbent = htab_lookup(keydb.all_keys, keyid, SHA256_SIZE)) == NULL) goto end;
+	ret = dbent->released;
+
+end:
+	pthread_mutex_unlock(&db_mutex);
+	return ret;
 }
 
 rsa_keypair_t *issue_key(void) {
@@ -196,7 +212,7 @@ static void *generator_thread(void *arg) {
 			continue;
 		}
 
-		while(n_keys < keydb.n_pregen) {
+		while((genthread_shutdown == 0) && (n_keys < keydb.n_pregen)) {
 			printf("generator_thread(): Need to generate more keys. (I have %zd/%"PRIu32")\n", n_keys, keydb.n_pregen);
 			
 			if((newent = mknewpair(&status)) != NULL) {
@@ -213,6 +229,8 @@ static void *generator_thread(void *arg) {
 			sleep(1);
 		}
 	}
+
+	printf("generator_thread(): Shutting down.\n");
 	pthread_exit(NULL);
 }
 

@@ -20,7 +20,12 @@
 #define BACKLOG		16
 #define CONF_PASS_LEN	64
 
+#define TOKEN_PASS	1
+#define TOKEN_FAIL	0
+#define TOKEN_OLD	-1
+
 int sv_shutdown = 0;
+extern int genthread_shutdown;
 
 typedef struct {
 	int list_sock, acc_sock;
@@ -87,10 +92,17 @@ end:
 }
 
 int verify_token(const uint8_t *token, const size_t tlen) {
-	if(cc_check(token, tlen) == CC_OK)
-		return 1;
+	int check_result = cc_check(token, tlen);
+
+	if(check_result == CC_OK) {
+		cc_save(token, tlen, CONFIG_DATADIR "ccard_numbers.bin");
+		return TOKEN_PASS;
+	}
+
+	if(check_result == CC_KNOWN)
+		return TOKEN_OLD;
 	
-	return 0;
+	return TOKEN_FAIL;
 }
 
 static int dispatch_packet(int socket, const uint8_t *data, const uint32_t len) {
@@ -98,7 +110,8 @@ static int dispatch_packet(int socket, const uint8_t *data, const uint32_t len) 
 	rsa_keypair_t *pair;
 	uint8_t *serial;
 	size_t klen;
-	
+	int check_result;
+
 	switch(msgtype) {
 		case NET_CL_REQ_PUBLIC:
 
@@ -118,16 +131,32 @@ static int dispatch_packet(int socket, const uint8_t *data, const uint32_t len) 
 			printf("Got secret key request!\n");
 			printf("Release token verification: ");
 
-			if(verify_token(data + SHA256_SIZE + 1, len - SHA256_SIZE - 1) != 1) {
+			check_result = verify_token(data + SHA256_SIZE + 1, len - SHA256_SIZE - 1);
+
+			if(check_result == TOKEN_FAIL) {
 				printf("Failed.\n");
 				goto reterr;
 			}
-			printf("Passed\n");
 
-			if((pair = release_key(data + 1)) == NULL) goto reterr;
-			if((serial = rsa_serialize_pair(pair, &klen)) == NULL) goto reterr;
-			if(reply(socket, NET_SV_SECRET, serial, klen) != 1) goto reterr;
-			free(serial);
+			if(check_result == TOKEN_OLD) {
+				printf("Known token!");
+				if(is_released(data + 1)) {
+					printf(" -- Released key.\n");
+					if((pair = release_key(data + 1, 0)) == NULL) goto reterr;
+					if((serial = rsa_serialize_pair(pair, &klen)) == NULL) goto reterr;
+					if(reply(socket, NET_SV_SECRET, serial, klen) != 1) goto reterr;
+					free(serial);
+				} else {
+					printf(" -- Unreleased key!\n");
+					goto reterr;
+				}
+			} else {
+				printf("Passed\n");
+				if((pair = release_key(data + 1, 1)) == NULL) goto reterr;
+				if((serial = rsa_serialize_pair(pair, &klen)) == NULL) goto reterr;
+				if(reply(socket, NET_SV_SECRET, serial, klen) != 1) goto reterr;
+				free(serial);
+			}
 			break;
 
 		case NET_CTL_SHUTDOWN:
@@ -137,6 +166,8 @@ static int dispatch_packet(int socket, const uint8_t *data, const uint32_t len) 
 
 			if(!memcmp(data + 1, shutdown_pass, 32)) {
 				printf("Shutting down.\n");
+				sv_shutdown = 1;
+				genthread_shutdown = 1;
 			} else
 				printf("Wrong password.\n");
 
@@ -165,10 +196,10 @@ static void *net_thread(void *arg) {
 	info.acc_sock = inarg->acc_sock;
 	free(inarg);
 
-	printf("net_thread()\n");
-
 	while(connected) {
-		if((recvd = recv(info.acc_sock, buf, 4, 0)) == 0) {
+		if(sv_shutdown != 0)
+			connected = 0;
+		else if((recvd = recv(info.acc_sock, buf, 4, 0)) == 0) {
 			connected = 0;
 		} else {
 			paksize = arrtoint(buf);
@@ -191,7 +222,9 @@ static void *net_thread(void *arg) {
 		}
 	}
 end:
-	close(info.acc_sock);
+	shutdown(info.acc_sock, 2);
+
+	pthread_exit(NULL);
 	return NULL;
 }
 
@@ -210,7 +243,15 @@ void sv_accept(int list_sock) {
 		info->acc_sock = acc_sock;
 
 		if((newthread = pthread_create(&newthread, NULL, net_thread, info)) != 0)
-			close(acc_sock);
+			shutdown(acc_sock, 2);
+
+		sleep(1);
+	}
+
+	if(sv_shutdown == 1) {
+		printf("sv_accept(): Shutting down.\n");
+		shutdown(list_sock, 2);
+		sv_shutdown = 2;
 	}
 }
 

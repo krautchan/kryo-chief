@@ -8,6 +8,8 @@
 
 #include "etc.h"
 
+extern int sv_shutdown;
+
 int main(void) {
 	int listen_socket;
 
@@ -21,6 +23,10 @@ int main(void) {
 
 	keydb_spawngen();
 	sv_accept(listen_socket);
+
+	while(sv_shutdown != 2) sleep(5);
+
+	printf("main(): Shutting down.\n");
 
 end:
 //	keydb_free();

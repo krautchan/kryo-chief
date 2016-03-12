@@ -8,8 +8,6 @@
 
 #define		NET_CL_REQ_PUBLIC		0x10
 #define		NET_CL_REQ_SECRET		0x11
-#define		NET_CL_REQ_STATUS		0x12
-#define		NET_CL_RELEASE			0x13
 
 #define		NET_SV_PUBLIC			0x20
 #define		NET_SV_SECRET			0x21
