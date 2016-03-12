@@ -17,6 +17,7 @@
 typedef struct keydb_t {
 	htab_t *issued_keys;
 	htab_t *released_keys;
+	htab_t *all_keys;
 	queue_t *available_keys;
 	uint32_t n_pregen, n_regen;
 	const char *basedir;
@@ -33,6 +34,45 @@ static pthread_mutex_t db_mutex;
 
 int genthread_shutdown = 0;
 
+rsa_keypair_t *release_key(const uint8_t *keyid) {
+	FILE *fp;
+	int i;
+	dbent_t *dbent;
+	rsa_keypair_t *out = NULL;
+
+	printf("Lookup: ");
+	for(i = 0; i < SHA256_SIZE; i++)
+		printf("%02x", keyid[i]);
+	printf("\n");
+
+	pthread_mutex_lock(&db_mutex);
+	if((dbent = htab_lookup(keydb.all_keys, keyid, SHA256_SIZE)) == NULL) {
+		printf("Lookup (all) failed!\n");
+		goto end;
+	}
+
+	if(htab_lookup(keydb.issued_keys, keyid, SHA256_SIZE) == NULL) {
+		printf("Lookup (issued) failed!\n");
+		goto end;
+	}
+
+	if((fp = fopen("etc/keys_released", "ab")) == NULL) {
+		printf("fopen() failed!\n");
+		goto end;
+	}
+
+	fwrite(keyid, SHA256_SIZE, 1, fp);
+
+	fclose(fp);
+
+	printf("All good.\n");
+	out = dbent->pair;
+
+end:
+	pthread_mutex_unlock(&db_mutex);
+	return out;
+}
+
 rsa_keypair_t *issue_key(void) {
 	rsa_keypair_t *out = NULL;
 	dbent_t *issue;
@@ -43,6 +83,12 @@ rsa_keypair_t *issue_key(void) {
 	if((issue = queue_pull(keydb.available_keys)) == NULL) goto fail;
 	if(issue->issued == 1) printf("???\n");
 	out = issue->pair;
+
+	if((htab_insert(keydb.issued_keys, issue->keyid, SHA256_SIZE, issue->pair)) != 1) {
+		queue_push(keydb.available_keys, issue);
+		out = NULL;
+		goto fail;
+	}
 
 	if((fp = fopen("etc/keys_issued", "ab")) == NULL) {
 		queue_push(keydb.available_keys, issue);
@@ -123,12 +169,14 @@ static dbent_t *mknewpair(int *status) {
 }
 
 static int keydb_insert(dbent_t *newent, const int issued) {
-	int ret = 1;
+	if((issued != 1) &&
+		(queue_push(keydb.available_keys, newent) != 1))
+		return 0;
+
+	if((htab_insert(keydb.all_keys, newent->keyid, SHA256_SIZE, newent)) != 1)
+		return 0;
 	
-	if(issued != 1)
-		ret = queue_push(keydb.available_keys, newent);
-	
-	return ret;
+	return 1;
 }
 
 static void *generator_thread(void *arg) {
@@ -176,8 +224,10 @@ static int read_keyfile(const char *filename) {
 	dbent_t *newent;
 	int ret = 0;
 
+	pthread_mutex_lock(&db_mutex);
+	
 	printf("Reading file '%s'... ", filename);
-	if((fp = fopen(filename, "rb")) == NULL) printf("fopen() failed!\n");
+	if((fp = fopen(filename, "rb")) == NULL) goto end;
 	
 	filesize = fp_size(fp);
 	if((data = malloc(filesize)) == NULL) goto closefp;
@@ -186,20 +236,19 @@ static int read_keyfile(const char *filename) {
 	if((newent = malloc(sizeof(dbent_t))) == NULL) goto freepair;
 	if(rsa_keyid_fromserial(data, newent->keyid) == 0) goto freenew;
 
-	if(htab_lookup(keydb.issued_keys, newent->keyid, SHA256_SIZE) != NULL) {
+	newent->issued = newent->released = 0;
+	if(htab_lookup(keydb.issued_keys, newent->keyid, SHA256_SIZE) != NULL)
 		newent->issued = 1;
-	} else {
-		newent->issued = 0;
-	}
+	if(htab_lookup(keydb.released_keys, newent->keyid, SHA256_SIZE) != NULL)
+		newent->released = 1;
+
 	newent->pair = newpair;
-	newent->released = 0;
 
-	pthread_mutex_lock(&db_mutex);
 	if(keydb_insert(newent, newent->issued) == 0) goto freenew;
-	pthread_mutex_unlock(&db_mutex);
 
-	printf("%s\n", newent->issued ? " (Issued)" : "");
 	ret = 1;
+
+	printf("(%c%c) ", newent->issued ? 'I' : '/', newent->released ? 'R' : '/');
 
 freenew:
 	if(ret == 0) free(newent);
@@ -209,8 +258,10 @@ freedata:
 	free(data);
 closefp:
 	fclose(fp);
-
-	printf("%s", (ret == 0) ? "Failed!" : "OK!");
+end:
+	printf("%s\n", (ret == 0) ? "Failed!" : "OK!");
+	
+	pthread_mutex_unlock(&db_mutex);
 	return ret;
 }
 
@@ -236,18 +287,18 @@ static void free_dbent(void *data) {
 	free(entry);
 }
 
-static void read_issued(const char *filename) {
+static void read_kidlist(const char *filename, htab_t *table) {
 	FILE *fp;
 	uint8_t data[SHA256_SIZE];
 	int ret;
 
-	printf("read_issued: %s\n", filename);
+	printf("read_kidlist: %s\n", filename);
 
 	if((fp = fopen(filename, "rb")) == NULL) return;
 
 	while(!feof(fp)) {
 		if((ret = fread(data, SHA256_SIZE, 1, fp)) == 1) {
-			htab_insert(keydb.issued_keys, data, SHA256_SIZE, data);
+			htab_insert(table, data, SHA256_SIZE, data);
 		}
 	}
 
@@ -265,17 +316,22 @@ int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_re
 		return 0;
 	if((keydb.released_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL)
 		goto freeissued;
-	if((keydb.available_keys = queue_new()) == NULL)
+	if((keydb.all_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL)
 		goto freereleased;
+	if((keydb.available_keys = queue_new()) == NULL)
+		goto freeall;
 
-	read_issued("etc/keys_issued");
+	read_kidlist(CONFIG_ISSUED, keydb.issued_keys);
+	read_kidlist(CONFIG_RELEASED, keydb.released_keys);
 
 	printf("keydb_init(): Scanning direcotory '%s'...\n", basedir);
-	if(read_dir(basedir) == 0) goto freereleased;
+	if(read_dir(basedir) == 0) goto freeall;
 	printf("keydb_init(): Got %lu keys. \n", queue_get_size(keydb.available_keys));
 
 	return 1;
 
+freeall:
+	htab_free(keydb.all_keys);
 freereleased:
 	htab_free(keydb.released_keys);
 freeissued:
@@ -286,6 +342,7 @@ freeissued:
 void keydb_free(void) {
 	htab_free(keydb.issued_keys);
 	htab_free(keydb.released_keys);
+	htab_free(keydb.all_keys);
 	queue_free(keydb.available_keys);
 	pthread_mutex_destroy(&db_mutex);
 }

@@ -84,8 +84,14 @@ static int dispatch_packet(int socket, const uint8_t *data, const uint32_t len) 
 				printf("Failed.\n");
 				goto reterr;
 			}
-
 			printf("Passed\n");
+
+			if((pair = release_key(data + 1)) == NULL) goto reterr;
+			if((serial = rsa_serialize_pair(pair, &klen)) == NULL) goto reterr;
+			if(reply(socket, NET_SV_SECRET, serial, klen) != 1) goto reterr;
+			free(serial);
+			break;
+
 		default:
 			goto reterr;
 	}

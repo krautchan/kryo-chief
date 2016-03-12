@@ -7,6 +7,7 @@
 
 #include "rsa.h"
 
+rsa_keypair_t *release_key(const uint8_t *keyid);
 rsa_keypair_t *issue_key(void);
 int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_regen);
 void keydb_free(void);

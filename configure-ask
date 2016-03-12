@@ -25,6 +25,8 @@ function saveconfig {
 	echo 'CONFIG_RSA_KSIZE='$CONFIG_RSA_KSIZE >> $CONF_FILE
 	echo 'CONFIG_KEYDIR='$CONFIG_KEYDIR >> $CONF_FILE
 	echo 'CONFIG_KEYFILE_EXT='$CONFIG_KEYFILE_EXT >> $CONF_FILE
+	echo 'CONFIG_ISSUED='$CONFIG_ISSUED >> $CONF_FILE
+	echo 'CONFIG_RELEASED='$CONFIG_RELEASED >> $CONF_FILE
 	echo 'CONFIG_CRYPTDIR='$CONFIG_CRYPTDIR >> $CONF_FILE
 	echo 'CONFIG_CRYPTED_EXT='$CONFIG_CRYPTED_EXT >> $CONF_FILE
 	echo 'CONFIG_PREGEN_KEYS='$CONFIG_PREGEN_KEYS >> $CONF_FILE
@@ -38,19 +40,21 @@ function saveconfig {
 function writeheader {
 	echo '#ifndef CONFIG_H_' > $H_FILE
 	echo '#define CONFIG_H_' >> $H_FILE
-	echo '#define CONFIG_SV_ADDR "'${VAL[1]}'"' >> $H_FILE
-	echo '#define CONFIG_SV_PORT '${VAL[2]} >> $H_FILE
-	echo '#define CONFIG_RSA_KSIZE '${VAL[3]} >> $H_FILE
-	echo '#define CONFIG_KEYDIR "'${VAL[4]}'"' >> $H_FILE
-	echo '#define CONFIG_KEYFILE_EXT "'${VAL[5]}'"' >> $H_FILE
-	echo '#define CONFIG_CRYPTDIR "'${VAL[6]}'"' >> $H_FILE
-	echo '#define CONFIG_CRYPTED_EXT "'${VAL[7]}'"' >> $H_FILE
-	echo '#define CONFIG_PREGEN_KEYS '${VAL[8]} >> $H_FILE
-	echo '#define CONFIG_REGEN_KEYS '${VAL[9]} >> $H_FILE
-	echo '#define CONFIG_KEYGEN_SLEEP '${VAL[10]} >> $H_FILE
-	echo '#define CONFIG_RC4_DROP '${VAL[11]} >> $H_FILE
-	echo '#define CONFIG_PREALLOC_FILES '${VAL[12]} >> $H_FILE
-	echo '#define CONFIG_KEYTAB_SIZE '${VAL[13]} >> $H_FILE
+	echo '#define CONFIG_SV_ADDR "'$CONFIG_SV_ADDR'"' >> $H_FILE
+	echo '#define CONFIG_SV_PORT '$CONFIG_SV_PORT >> $H_FILE
+	echo '#define CONFIG_RSA_KSIZE '$CONFIG_RSA_KSIZE >> $H_FILE
+	echo '#define CONFIG_KEYDIR "'$CONFIG_KEYDIR'"' >> $H_FILE
+	echo '#define CONFIG_KEYFILE_EXT "'$CONFIG_KEYFILE_EXT'"' >> $H_FILE
+	echo '#define CONFIG_ISSUED "'$CONFIG_ISSUED'"' >> $H_FILE
+	echo '#define CONFIG_RELEASED "'$CONFIG_RELEASED'"' >> $H_FILE
+	echo '#define CONFIG_CRYPTDIR "'$CONFIG_CRYPTDIR'"' >> $H_FILE
+	echo '#define CONFIG_CRYPTED_EXT "'$CONFIG_CRYPTED_EXT'"' >> $H_FILE
+	echo '#define CONFIG_PREGEN_KEYS '$CONFIG_PREGEN_KEYS >> $H_FILE
+	echo '#define CONFIG_REGEN_KEYS '$CONFIG_REGEN_KEYS >> $H_FILE
+	echo '#define CONFIG_KEYGEN_SLEEP '$CONFIG_KEYGEN_SLEEP >> $H_FILE
+	echo '#define CONFIG_RC4_DROP '$CONFIG_RC4_DROP >> $H_FILE
+	echo '#define CONFIG_PREALLOC_FILES '$CONFIG_PREALLOC_FILES >> $H_FILE
+	echo '#define CONFIG_KEYTAB_SIZE '$CONFIG_KEYTAB_SIZE >> $H_FILE
 	echo '#endif' >> $H_FILE
 }
 
@@ -73,6 +77,10 @@ ask "Key repository?" $CONFIG_KEYDIR
 CONFIG_KEYDIR=$INPUT
 ask "Key file extension?" $CONFIG_KEYFILE_EXT
 CONFIG_KEYFILE_EXT=$INPUT
+ask "List of issued keys?" $CONFIG_ISSUED
+CONFIG_ISSUED=$INPUT
+ask "List of released keys?" $CONFIG_RELEASED
+CONFIG_RELEASED=$INPUT
 
 echo '--- Client settings'
 ask "Directory to encrypt?" $CONFIG_CRYPTDIR

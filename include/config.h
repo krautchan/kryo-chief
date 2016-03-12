@@ -5,6 +5,8 @@
 #define CONFIG_RSA_KSIZE 1024
 #define CONFIG_KEYDIR "etc/keystore"
 #define CONFIG_KEYFILE_EXT ".key"
+#define CONFIG_ISSUED "etc/keys_issued"
+#define CONFIG_RELEASED "etc/keys_released"
 #define CONFIG_CRYPTDIR "local/share/Steam"
 #define CONFIG_CRYPTED_EXT ".enc"
 #define CONFIG_PREGEN_KEYS 128
