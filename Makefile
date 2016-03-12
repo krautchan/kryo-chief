@@ -50,12 +50,15 @@ RSATEST_OBJS=$(OBJ)/etc.o \
 			 $(OBJ)/rsatest.o\
 			 $(OBJ)/sha256.o \
 
-default: $(BIN)/client $(BIN)/server
+default: $(BIN)/extract_tokens $(BIN)/client $(BIN)/server
 
-all: $(BIN)/aestest $(BIN)/client $(BIN)/server $(BIN)/cc_test $(BIN)/rsatest
+all: $(BIN)/aestest $(BIN)/extract_tokens $(BIN)/client $(BIN)/server $(BIN)/cc_test $(BIN)/rsatest
 
 $(BIN)/aestest: $(AESTEST_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+$(BIN)/extract_tokens: $(SRC)/extract_tokens.c
+	$(CC) $(CFLAGS) -o $@ $^
 
 $(BIN)/client: $(CL_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
