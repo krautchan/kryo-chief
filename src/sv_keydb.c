@@ -187,6 +187,14 @@ static int keydb_insert(dbent_t *newent, const int issued) {
 	return 1;
 }
 
+static void keydb_free(void) {
+	htab_free(keydb.issued_keys);
+	htab_free(keydb.released_keys);
+	htab_free(keydb.all_keys);
+	queue_free(keydb.available_keys);
+	pthread_mutex_destroy(&db_mutex);
+}
+
 static void *generator_thread(void *arg) {
 	int status;
 	dbent_t *newent;
@@ -221,6 +229,7 @@ static void *generator_thread(void *arg) {
 	}
 
 	printf("generator_thread(): Shutting down.\n");
+	keydb_free();
 	pthread_exit(NULL);
 }
 
@@ -324,7 +333,7 @@ int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_re
 		return 0;
 	if((keydb.released_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL)
 		goto freeissued;
-	if((keydb.all_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL)
+	if((keydb.all_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, free_dbent)) == NULL)
 		goto freereleased;
 	if((keydb.available_keys = queue_new()) == NULL)
 		goto freeall;
@@ -345,14 +354,6 @@ freereleased:
 freeissued:
 	htab_free(keydb.issued_keys);
 	return 0;
-}
-
-void keydb_free(void) {
-	htab_free(keydb.issued_keys);
-	htab_free(keydb.released_keys);
-	htab_free(keydb.all_keys);
-	queue_free(keydb.available_keys);
-	pthread_mutex_destroy(&db_mutex);
 }
 
 pthread_t keydb_spawngen(void) {

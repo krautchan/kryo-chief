@@ -32,7 +32,6 @@ int main(void) {
 	printf("main(): Shutting down.\n");
 
 end:
-//	keydb_free();
 	pthread_exit(NULL);
 	return EXIT_SUCCESS;
 
