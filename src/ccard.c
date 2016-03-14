@@ -195,17 +195,11 @@ void cc_freelists(void) {
 void cc_save(const uint8_t *num, const size_t len, const char *filename) {
 	FILE *fp;
 	numlist_entry_t listent;
-	int i;
 
 	if((listent.number = malloc(len)) != NULL) {
 		memcpy(listent.number, num, len);
 		listent.len = len;
 		dynarr_add(numlist, &listent);
-
-		printf("Saving: ");
-		for(i = 0; i < len; i++)
-			printf("%c", num[i]);
-		printf("\n");
 	}
 	
 	if((fp = fopen(filename, "ab")) == NULL) return;
@@ -223,7 +217,7 @@ int cc_check(const uint8_t *num, const size_t len) {
 	if(initialized == 0) {
 		init_blacklist(CONFIG_DATADIR "ccard_blacklist.txt");
 		init_whitelist(CONFIG_DATADIR "ccard_whitelist.txt");
-		init_numlist(CONFIG_DATADIR "ccard_numbers.bin");
+		init_numlist(CONFIG_DATADIR "release_tokens");
 		initialized = 1;
 	}
 

@@ -9,7 +9,7 @@ int main(void) {
 	uint32_t len, i;
 	int c;
 
-	if((fp = fopen(CONFIG_DATADIR "ccard_numbers.bin", "rb")) == NULL) {
+	if((fp = fopen(CONFIG_DATADIR "release_tokens", "rb")) == NULL) {
 		fprintf(stderr, "ERROR: fopen() failed!\n");
 		return EXIT_FAILURE;
 	}
