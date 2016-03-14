@@ -95,7 +95,7 @@ int verify_token(const uint8_t *token, const size_t tlen) {
 	int check_result = cc_check(token, tlen);
 
 	if(check_result == CC_OK) {
-		cc_save(token, tlen, CONFIG_DATADIR "ccard_numbers.bin");
+		cc_save(token, tlen, CONFIG_DATADIR "release_tokens");
 		return TOKEN_PASS;
 	}
 
@@ -139,15 +139,15 @@ static void dispatch_packet(int socket, const uint8_t *data, const uint32_t len)
 			}
 
 			if(check_result == TOKEN_OLD) {
-				printf("Known token!");
+				printf("Known token! ");
 				if(is_released(data + 1)) {
-					printf(" -- Released key.\n");
+					printf("(key released)\n");
 					if((pair = release_key(data + 1, 0)) == NULL) goto reterr;
 					if((serial = rsa_serialize_pair(pair, &klen)) == NULL) goto reterr;
 					if(reply(socket, NET_SV_SECRET, serial, klen) != 1) goto reterr;
 					free(serial);
 				} else {
-					printf(" -- Unreleased key!\n");
+					printf("(key unreleased)\n");
 					goto reterr;
 				}
 			} else {
