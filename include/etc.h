@@ -8,6 +8,7 @@
 
 typedef void (*freefunc_t)(void*);
 
+void printaddr(const uint8_t *peer);
 void inttoarr(const uint32_t in, uint8_t *out);
 uint32_t arrtoint(uint8_t *in);
 size_t bitstobytes(const size_t n_bits);

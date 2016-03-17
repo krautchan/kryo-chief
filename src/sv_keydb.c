@@ -230,6 +230,7 @@ static void *generator_thread(void *arg) {
 
 	printf("generator_thread(): Shutting down.\n");
 	keydb_free();
+	genthread_shutdown = 2;
 	pthread_exit(NULL);
 }
 
@@ -356,7 +357,7 @@ freeissued:
 	return 0;
 }
 
-pthread_t keydb_spawngen(void) {
+int keydb_spawngen(void) {
 	pthread_t genthread;
 	int status;
 
@@ -364,5 +365,7 @@ pthread_t keydb_spawngen(void) {
 		fprintf(stderr, "keydb_spawngen(): pthread_create() failed.\n");
 		return 0;
 	}
-	return genthread;
+	pthread_detach(genthread);
+
+	return 1;
 }

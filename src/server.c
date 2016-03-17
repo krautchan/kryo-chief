@@ -3,13 +3,15 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <sys/socket.h>
+
 #include "config.h"
 #include "sv_keydb.h"
 #include "sv_net.h"
 
 #include "etc.h"
 
-extern int sv_shutdown;
+extern int genthread_shutdown;
 
 int main(void) {
 	int listen_socket;
@@ -17,22 +19,18 @@ int main(void) {
 	signal(SIGPIPE, SIG_IGN);
 
 	keydb_init(CONFIG_DATADIR "keystore", CONFIG_PREGEN_KEYS, CONFIG_REGEN_KEYS);
+	if(keydb_spawngen() == 0) goto end;
+
+	printf("Opening listening socket on port %d\n", CONFIG_SV_PORT);
 
 	if((listen_socket = sv_listen(CONFIG_SV_PORT)) == INVALID_SOCKET) {
 		printf("listen() failed!\n");
 		goto end;
 	}
-	printf("Listening on port %d\n", CONFIG_SV_PORT);
 
-	keydb_spawngen();
-	sv_accept(listen_socket);
-
-	while(sv_shutdown != 2) sleep(5);
-
-	printf("main(): Shutting down.\n");
+	while(genthread_shutdown < 2);
 
 end:
-	pthread_exit(NULL);
 	return EXIT_SUCCESS;
 
 }

@@ -3,9 +3,6 @@
 
 #define		NET_PACKET_MAX			128
 
-#define		NET_OK					0x00
-#define		NET_ERROR				0x01
-
 #define		NET_CL_REQ_PUBLIC		0x10
 #define		NET_CL_REQ_SECRET		0x11
 

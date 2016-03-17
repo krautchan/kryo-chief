@@ -11,6 +11,14 @@ union endtest_t {
 	uint8_t j[4];
 };
 
+void printaddr(const uint8_t *peer) {
+	int i;
+
+	for(i = 0; i < 3; i++)
+		printf("%d.", peer[i]);
+	printf("%d: ", peer[3]);
+}
+
 void inttoarr(const uint32_t in, uint8_t *out) {
 	union endtest_t test;
 	test.i = 1;
