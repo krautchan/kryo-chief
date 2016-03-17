@@ -34,7 +34,7 @@ static pthread_mutex_t db_mutex;
 
 int genthread_shutdown = 0;
 
-rsa_keypair_t *release_key(const uint8_t *keyid, const int save) {
+rsa_keypair_t *release_key(const uint8_t *keyid) {
 	FILE *fp;
 	dbent_t *dbent;
 	rsa_keypair_t *out = NULL;
@@ -50,16 +50,14 @@ rsa_keypair_t *release_key(const uint8_t *keyid, const int save) {
 		goto end;
 	}
 
-	if(save == 1) {
-		if((fp = fopen(CONFIG_DATADIR "keys_released", "ab")) == NULL) {
-			printf("fopen() failed!\n");
-			goto end;
-		}
-
-		fwrite(keyid, SHA256_SIZE, 1, fp);
-
-		fclose(fp);
+	if((fp = fopen(CONFIG_DATADIR "keys_released", "ab")) == NULL) {
+		printf("fopen() failed!\n");
+		goto end;
 	}
+	fwrite(keyid, SHA256_SIZE, 1, fp);
+	fclose(fp);
+
+	dbent->released = 1;
 	out = dbent->pair;
 
 end:
