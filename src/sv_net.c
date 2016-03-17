@@ -282,7 +282,7 @@ int replyforge(fd_state_t *state) {
 
 			if(release_secret == 1) {
 				printf(" --> Request granted.\n");
-				if((pair = release_key(state->data, 1)) == NULL) goto error;
+				if((pair = release_key(state->data)) == NULL) goto error;
 				if((serial = rsa_serialize_pair(pair, &klen)) == NULL) goto error;
 				state->reply_data = packetforge(NET_SV_SECRET, klen, serial, &state->reply_len);
 				free(serial);

@@ -78,5 +78,11 @@ clean:
 	rm -f $(OBJ)/*
 	rm -f $(BIN)/*
 
+mrproper: clean
+	cp .config_default .config
+	rm -f etc/keys_issued
+	rm -f etc/keys_released
+	rm -f etc/release_tokens
+
 $(OBJ)/%.o: $(SRC)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $^

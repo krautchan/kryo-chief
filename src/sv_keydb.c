@@ -15,8 +15,6 @@
 #include "sha256.h"
 
 typedef struct keydb_t {
-	htab_t *issued_keys;
-	htab_t *released_keys;
 	htab_t *all_keys;
 	queue_t *available_keys;
 	uint32_t n_pregen, n_regen;
@@ -41,12 +39,12 @@ rsa_keypair_t *release_key(const uint8_t *keyid) {
 
 	pthread_mutex_lock(&db_mutex);
 	if((dbent = htab_lookup(keydb.all_keys, keyid, SHA256_SIZE)) == NULL) {
-		printf("Lookup (all) failed!\n");
+		printf("Unknown key ID!\n");
 		goto end;
 	}
 
-	if(htab_lookup(keydb.issued_keys, keyid, SHA256_SIZE) == NULL) {
-		printf("Lookup (issued) failed!\n");
+	if(dbent->issued == 0) {
+		printf("Key has not been issued.\n");
 		goto end;
 	}
 
@@ -81,7 +79,7 @@ end:
 
 rsa_keypair_t *issue_key(void) {
 	rsa_keypair_t *out = NULL;
-	dbent_t *issue;
+	dbent_t *issue, *global;
 	FILE *fp;
 
 	pthread_mutex_lock(&db_mutex);
@@ -90,7 +88,7 @@ rsa_keypair_t *issue_key(void) {
 	if(issue->issued == 1) printf("???\n");
 	out = issue->pair;
 
-	if((htab_insert(keydb.issued_keys, issue->keyid, SHA256_SIZE, issue->pair)) != 1) {
+	if((global = htab_lookup(keydb.all_keys, issue->keyid, SHA256_SIZE)) == NULL) {
 		queue_push(keydb.available_keys, issue);
 		out = NULL;
 		goto fail;
@@ -105,8 +103,7 @@ rsa_keypair_t *issue_key(void) {
 	fwrite(issue->keyid, SHA256_SIZE, 1, fp);
 	fclose(fp);
 
-	issue->issued = 1;
-
+	global->issued = 1;
 fail:
 	pthread_mutex_unlock(&db_mutex);
 	return out;
@@ -181,13 +178,11 @@ static int keydb_insert(dbent_t *newent, const int issued) {
 
 	if((htab_insert(keydb.all_keys, newent->keyid, SHA256_SIZE, newent)) != 1)
 		return 0;
-	
+
 	return 1;
 }
 
 static void keydb_free(void) {
-	htab_free(keydb.issued_keys);
-	htab_free(keydb.released_keys);
 	htab_free(keydb.all_keys);
 	queue_free(keydb.available_keys);
 	pthread_mutex_destroy(&db_mutex);
@@ -232,7 +227,7 @@ static void *generator_thread(void *arg) {
 	pthread_exit(NULL);
 }
 
-static int read_keyfile(const char *filename) {
+static int read_keyfile(const char *filename, htab_t *issued, htab_t *released) {
 	FILE *fp;
 	size_t filesize;
 	uint8_t *data;
@@ -241,10 +236,10 @@ static int read_keyfile(const char *filename) {
 	int ret = 0;
 
 	pthread_mutex_lock(&db_mutex);
-	
+
 	printf("Reading file '%s'... ", filename);
 	if((fp = fopen(filename, "rb")) == NULL) goto end;
-	
+
 	filesize = fp_size(fp);
 	if((data = malloc(filesize)) == NULL) goto closefp;
 	if(fread(data, filesize, 1, fp) == 0) goto freedata;
@@ -253,9 +248,9 @@ static int read_keyfile(const char *filename) {
 	if(rsa_keyid_fromserial(data, newent->keyid) == 0) goto freenew;
 
 	newent->issued = newent->released = 0;
-	if(htab_lookup(keydb.issued_keys, newent->keyid, SHA256_SIZE) != NULL)
+	if(htab_lookup(issued, newent->keyid, SHA256_SIZE) != NULL)
 		newent->issued = 1;
-	if(htab_lookup(keydb.released_keys, newent->keyid, SHA256_SIZE) != NULL)
+	if(htab_lookup(released, newent->keyid, SHA256_SIZE) != NULL)
 		newent->released = 1;
 
 	newent->pair = newpair;
@@ -276,19 +271,19 @@ closefp:
 	fclose(fp);
 end:
 	printf("%s\n", (ret == 0) ? "Failed!" : "OK!");
-	
+
 	pthread_mutex_unlock(&db_mutex);
 	return ret;
 }
 
-static int read_dir(const char *basedir) {
+static int read_dir(const char *basedir, htab_t *issued, htab_t *released) {
 	size_t i;
 	fslist_t *list;
-	
+
 	if((list = fslist_scan(basedir)) == NULL) return 0;
 
 	for(i = 0; i < list->n; i++)
-		read_keyfile(list->filename[i]);
+		read_keyfile(list->filename[i], issued, released);
 
 	fslist_free(list);
 	return 1;
@@ -322,37 +317,38 @@ static void read_kidlist(const char *filename, htab_t *table) {
 }
 
 int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_regen) {
+	htab_t *issued, *released;
 	keydb.n_pregen = n_pregen;
 	keydb.n_regen = n_regen;
 	keydb.basedir = basedir;
+	int ret = 0;
 
 	pthread_mutex_init(&db_mutex, NULL);
 
-	if((keydb.issued_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL)
-		return 0;
-	if((keydb.released_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL)
-		goto freeissued;
-	if((keydb.all_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, free_dbent)) == NULL)
-		goto freereleased;
-	if((keydb.available_keys = queue_new()) == NULL)
-		goto freeall;
+	if((issued = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL) return 0;
+	if((released = htab_new(CONFIG_KEYTAB_SIZE, NULL, NULL)) == NULL) goto freeissued;
 
-	read_kidlist(CONFIG_DATADIR "keys_issued", keydb.issued_keys);
-	read_kidlist(CONFIG_DATADIR "keys_released", keydb.released_keys);
+	read_kidlist(CONFIG_DATADIR "keys_issued", issued);
+	read_kidlist(CONFIG_DATADIR "keys_released", released);
+
+	if((keydb.all_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, free_dbent)) == NULL) goto freereleased;
+	if((keydb.available_keys = queue_new()) == NULL) goto freeall;
 
 	printf("keydb_init(): Scanning direcotory '%s'...\n", basedir);
-	if(read_dir(basedir) == 0) goto freeall;
+	if(read_dir(basedir, issued, released) == 0) goto freeall;
 	printf("keydb_init(): Got %lu keys. \n", queue_get_size(keydb.available_keys));
 
-	return 1;
+	ret = 1;
+	goto freereleased;
 
 freeall:
 	htab_free(keydb.all_keys);
 freereleased:
-	htab_free(keydb.released_keys);
+	htab_free(released);
 freeissued:
-	htab_free(keydb.issued_keys);
-	return 0;
+	htab_free(issued);
+
+	return ret;
 }
 
 int keydb_spawngen(void) {
