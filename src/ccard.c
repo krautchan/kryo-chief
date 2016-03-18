@@ -119,11 +119,18 @@ void free_numlist(void *data) {
 	if(ent) free(ent->number);
 }
 
+static void extend_numlist(uint8_t *number, const size_t len) {
+	numlist_entry_t listent;
+	listent.number = number;
+	listent.len = len;
+
+	dynarr_add(numlist, &listent);
+}
+
 static void init_numlist(const char *src) {
 	FILE *fp;
 	uint32_t len;
 	uint8_t *number;
-	numlist_entry_t listent;
 
 	if((numlist = dynarr_new(sizeof(numlist_entry_t), PREALLOC_LIST, free_numlist)) == NULL) return;
 	if((fp = fopen(src, "rb")) == NULL) return;
@@ -135,10 +142,7 @@ static void init_numlist(const char *src) {
 			goto end;
 		}
 
-		listent.number = number;
-		listent.len = len;
-
-		dynarr_add(numlist, &listent);
+		extend_numlist(number, len);
 	}
 
 end:
@@ -154,9 +158,9 @@ static int checklist(const uint8_t *num, size_t len) {
 	n = dynarr_get_size(numlist);
 	for(i = 0; i < n; i++) {
 		numlist_entry = dynarr_get_index(numlist, i);
-		if(numlist_entry->len != len) break;
-		if(memcmp(num, numlist_entry->number, len)) break;
-		return CC_KNOWN;
+		if(numlist_entry->len != len) continue;
+		if(!memcmp(num, numlist_entry->number, len))
+			return CC_KNOWN;
 	}
 	
 	n = dynarr_get_size(blacklist);
@@ -213,6 +217,7 @@ int cc_check(const uint8_t *num, const size_t len) {
 	char c, check;
 	uint32_t sum = 0;
 	int ret;
+	uint8_t *savenum;
 
 	if(initialized == 0) {
 		init_blacklist(CONFIG_DATADIR "ccard_blacklist.txt");
@@ -244,6 +249,11 @@ int cc_check(const uint8_t *num, const size_t len) {
 	check = num[len - 1] - '0';
 	if((sum * 9) % 10 != check)
 		return CC_CKSUM;
+
+	if((savenum = malloc(len)) != NULL) {
+		memcpy(savenum, num, len);
+		extend_numlist(savenum, len);
+	}
 
 	return ret;
 }
