@@ -1,3 +1,26 @@
+/* 
+ * HTR -- The Heisetrolljan
+ * 
+ * Copyright (C) 2016  Martin Wolters
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to 
+ * the Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA  02110-1301, USA
+ * 
+ */
+
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -5,7 +28,6 @@
 #include <string.h>
 
 #include "aes.h"
-#include "ccard.h"
 #include "cl_net.h"
 #include "config.h"
 #include "etc.h"
@@ -104,8 +126,6 @@ static rsa_keypair_t *remote_pubkey(uint8_t **serialized, size_t *len) {
 	if((pair = rsa_read_public(reply + 1, reply_len - 1)) == NULL) goto freerep;
 	if((*serialized = rsa_serialize_public(pair, len)) == NULL) goto freepair;
 
-	rsa_keypair_print(pair);
-
 	out = pair;
 
 freepair:
@@ -199,11 +219,9 @@ static uint8_t *remote_seckey(const char *token, const uint8_t *key_id, size_t *
 	if((reply = cl_oneshot(CONFIG_SV_ADDR, CONFIG_SV_PORT, querypak, request_len, &reply_len)) == NULL) goto freepak;
 	if(reply_len < 5) goto freerep;
 
+	if(len)
+		*len = reply_len;
 	out = reply;
-	
-	rsa_keypair_t *pair = rsa_read_secret(reply + 1, reply_len -1);
-	rsa_keypair_print(pair);
-	rsa_keypair_free(pair);
 	
 freerep:
 	if(out == NULL)
@@ -240,10 +258,10 @@ static uint8_t *request_seckey(const char *token, int *status) {
 	if(rsa_keyid_fromserial(buf, key_id) == 0) goto freebuf;
 
 	/* Do the actual request */
-//	if((sec_key = local_seckey(token, key_id, &keylen, status)) == NULL) goto freebuf;
 	if((sec_key = remote_seckey(token, key_id, &keylen, status)) == NULL) goto freebuf;
 	
 	*status = GENERIC_ERROR;
+	printf("KL: %d\n", keylen);
 	if((secfp = fopen(SECFILE, "wb")) != NULL) {
 		fwrite(sec_key + 1, keylen - 1, 1, secfp);
 		fclose(secfp);
@@ -310,9 +328,12 @@ int main(void) {
 				if(status == TOKEN_REJECTED)
 					printf("That didn't work :( Try again.\n");
 				request_token = line_in(stdin);
+				if(request_token[0] == '\0')
+					break;
+
 				sym_key = request_seckey(request_token, &status);
 				free(request_token);
-			} while(status == TOKEN_REJECTED);
+			} while(status != TOKEN_ACCEPTED);
 
 			if(status == GENERIC_ERROR) {
 				fprintf(stderr, "Something went wrong. You lost 10%% XP. Maybe try again later.\n");
