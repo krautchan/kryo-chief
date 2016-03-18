@@ -13,14 +13,14 @@
 #define MODE_INTER	2
 #define MODE_CMDL	4
 
-static int send_password(char *password, size_t len) {
+static int send_password(const char *password, const size_t len) {
 	uint8_t *packet;
 	size_t paksize = len + 5;
 	uint8_t *reply;
 	int ret = EXIT_FAILURE;
 
 	if((packet = malloc(paksize)) == NULL)
-		return EXIT_FAILURE;
+		return ret;
 
 	inttoarr(len + 1, packet);
 	packet[4] = NET_CTL_SHUTDOWN;
@@ -28,6 +28,7 @@ static int send_password(char *password, size_t len) {
 
 	printf("Using password '%s'.\n", password);
 	printf("Sending shutdown request to %s:%d...\n", CONFIG_SV_ADDR, CONFIG_SV_PORT);
+
 	if((reply = cl_oneshot(CONFIG_SV_ADDR, CONFIG_SV_PORT, packet, paksize, NULL)) != NULL)
 			ret = EXIT_SUCCESS;
 
