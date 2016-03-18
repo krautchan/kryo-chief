@@ -40,6 +40,10 @@ SV_OBJS=$(OBJ)/ccard.o \
 		$(OBJ)/sv_net.o \
 		$(OBJ)/sha256.o
 
+SD_OBJS=$(OBJ)/cl_net.o \
+		$(OBJ)/etc.o \
+		$(OBJ)/shutdown.o
+
 CTEST_OBJS=$(OBJ)/ccard.o $(OBJ)/cc_test.o $(OBJ)/dynarr.o $(OBJ)/etc.o
 AESTEST_OBJS=$(OBJ)/aes.o $(OBJ)/aestest.o
 RSATEST_OBJS=$(OBJ)/etc.o \
@@ -50,9 +54,9 @@ RSATEST_OBJS=$(OBJ)/etc.o \
 			 $(OBJ)/rsatest.o\
 			 $(OBJ)/sha256.o \
 
-default: $(BIN)/extract_tokens $(BIN)/client $(BIN)/server
+default: $(BIN)/extract_tokens $(BIN)/client $(BIN)/server $(BIN)/shutdown
 
-all: $(BIN)/aestest $(BIN)/extract_tokens $(BIN)/client $(BIN)/server $(BIN)/cc_test $(BIN)/rsatest
+all: $(BIN)/aestest $(BIN)/extract_tokens $(BIN)/client $(BIN)/server $(BIN)/shutdown $(BIN)/cc_test $(BIN)/rsatest
 
 $(BIN)/aestest: $(AESTEST_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
@@ -65,6 +69,9 @@ $(BIN)/client: $(CL_OBJS)
 
 $(BIN)/server: $(SV_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS_SV) -o $@ $^
+
+$(BIN)/shutdown: $(SD_OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 $(BIN)/cc_test: $(CTEST_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
