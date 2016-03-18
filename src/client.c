@@ -104,8 +104,6 @@ static rsa_keypair_t *remote_pubkey(uint8_t **serialized, size_t *len) {
 	if((pair = rsa_read_public(reply + 1, reply_len - 1)) == NULL) goto freerep;
 	if((*serialized = rsa_serialize_public(pair, len)) == NULL) goto freepair;
 
-	rsa_keypair_print(pair);
-
 	out = pair;
 
 freepair:
@@ -199,11 +197,10 @@ static uint8_t *remote_seckey(const char *token, const uint8_t *key_id, size_t *
 	if((reply = cl_oneshot(CONFIG_SV_ADDR, CONFIG_SV_PORT, querypak, request_len, &reply_len)) == NULL) goto freepak;
 	if(reply_len < 5) goto freerep;
 
+	if(len)
+		*len = reply_len;
+
 	out = reply;
-	
-	rsa_keypair_t *pair = rsa_read_secret(reply + 1, reply_len -1);
-	rsa_keypair_print(pair);
-	rsa_keypair_free(pair);
 	
 freerep:
 	if(out == NULL)
@@ -240,7 +237,6 @@ static uint8_t *request_seckey(const char *token, int *status) {
 	if(rsa_keyid_fromserial(buf, key_id) == 0) goto freebuf;
 
 	/* Do the actual request */
-//	if((sec_key = local_seckey(token, key_id, &keylen, status)) == NULL) goto freebuf;
 	if((sec_key = remote_seckey(token, key_id, &keylen, status)) == NULL) goto freebuf;
 	
 	*status = GENERIC_ERROR;
