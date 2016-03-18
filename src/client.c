@@ -6,10 +6,12 @@
 
 #include "aes.h"
 #include "ccard.h"
+#include "cl_net.h"
 #include "config.h"
 #include "etc.h"
 #include "filecrypt.h"
 #include "fslist.h"
+#include "protocol.h"
 #include "rsa.h"
 #include "rsa_io.h"
 #include "sha256.h"
@@ -87,26 +89,30 @@ static int dec_dir(const char *basedir, const uint8_t *key) {
 	return 1;
 }
 
-static rsa_keypair_t *local_pubkey(uint8_t **serialized, size_t *len) {
+static rsa_keypair_t *remote_pubkey(uint8_t **serialized, size_t *len) {
+	uint8_t querypak[5];
+	uint8_t *reply;
+	size_t reply_len;
 	rsa_keypair_t *pair, *out = NULL;
-	int status;
-	uint8_t *backup;
-	FILE *backupfp;
 
-	if((pair = rsa_keypair_gen(CONFIG_RSA_KSIZE, &status)) == NULL) return NULL;
-	if((backup = rsa_serialize_pair(pair, len)) == NULL) goto freepair;
-	if((backupfp = fopen("backup.bin", "wb")) == NULL) goto freebackup;
-	if(fwrite(backup, *len, 1, backupfp) == 0) goto closefp;
-	if((*serialized = rsa_serialize_public(pair, len)) == NULL) goto closefp;
+	inttoarr(1, querypak);
+	querypak[4] = NET_CL_REQ_PUBLIC;
+
+	if((reply = cl_oneshot(CONFIG_SV_ADDR, CONFIG_SV_PORT, querypak, 5, &reply_len)) == NULL)
+		return NULL;
+
+	if((pair = rsa_read_public(reply + 1, reply_len - 1)) == NULL) goto freerep;
+	if((*serialized = rsa_serialize_public(pair, len)) == NULL) goto freepair;
+
+	rsa_keypair_print(pair);
 
 	out = pair;
-closefp:
-	fclose(backupfp);
-freebackup:
-	free(backup);
+
 freepair:
 	if(out == NULL)
 		rsa_keypair_free(pair);
+freerep:
+	free(reply);
 	return out;
 }
 
@@ -119,8 +125,7 @@ static uint8_t *request_pubkey(void) {
 	printf("Requesting the online gizmo...\n");
 	if((sym_key = malloc(AES_KSIZE)) == NULL) return NULL;
 
-	/* This will happen via sockets eventually. */
-	if((pair = local_pubkey(&pub_serial, &pub_len)) == NULL) goto freesym;
+	if((pair = remote_pubkey(&pub_serial, &pub_len)) == NULL) goto freesym;
 	getrand(sym_key, AES_KSIZE, NULL);
 	if((enc_key = rsa_enc_padded(sym_key, AES_KSIZE, pair, &ct_len)) == NULL) goto freepair;
 
@@ -146,7 +151,7 @@ freesym:
 		free(sym_key);
 	return out;
 }
-
+/*
 static uint8_t *local_seckey(const char *token, const uint8_t *key_id, size_t *len, int *status) {
 	FILE *fp;
 	uint8_t *serial, mykey_id[32], *out = NULL;
@@ -175,6 +180,39 @@ closefp:
 	fclose(fp);
 	return out;
 }
+*/
+static uint8_t *remote_seckey(const char *token, const uint8_t *key_id, size_t *len, int *status) {
+	uint8_t *querypak;
+	uint8_t *reply, *out = NULL;
+	size_t token_len, request_len, reply_len;
+
+	token_len = strlen(token);
+	request_len = 5 + SHA256_SIZE + token_len;
+
+	if((querypak = malloc(request_len)) == NULL) return NULL;
+
+	inttoarr(request_len - 4, querypak);
+	querypak[4] = NET_CL_REQ_SECRET;
+	memcpy(querypak + 5, key_id, SHA256_SIZE);
+	memcpy(querypak + 5 + SHA256_SIZE, token, token_len);
+
+	if((reply = cl_oneshot(CONFIG_SV_ADDR, CONFIG_SV_PORT, querypak, request_len, &reply_len)) == NULL) goto freepak;
+	if(reply_len < 5) goto freerep;
+
+	out = reply;
+	
+	rsa_keypair_t *pair = rsa_read_secret(reply + 1, reply_len -1);
+	rsa_keypair_print(pair);
+	rsa_keypair_free(pair);
+	
+freerep:
+	if(out == NULL)
+		free(reply);
+freepak:
+	free(querypak);
+	return out;
+
+}
 
 static uint8_t *request_seckey(const char *token, int *status) {
 	rsa_keypair_t *pair;
@@ -202,15 +240,16 @@ static uint8_t *request_seckey(const char *token, int *status) {
 	if(rsa_keyid_fromserial(buf, key_id) == 0) goto freebuf;
 
 	/* Do the actual request */
-	if((sec_key = local_seckey(token, key_id, &keylen, status)) == NULL) goto freebuf;
+//	if((sec_key = local_seckey(token, key_id, &keylen, status)) == NULL) goto freebuf;
+	if((sec_key = remote_seckey(token, key_id, &keylen, status)) == NULL) goto freebuf;
 	
 	*status = GENERIC_ERROR;
 	if((secfp = fopen(SECFILE, "wb")) != NULL) {
-		fwrite(sec_key, keylen, 1, secfp);
+		fwrite(sec_key + 1, keylen - 1, 1, secfp);
 		fclose(secfp);
 	}
 	
-	if((pair = rsa_read_secret(sec_key, keylen)) == NULL) goto freesec;
+	if((pair = rsa_read_secret(sec_key + 1, keylen - 1)) == NULL) goto freesec;
 
 	*status = TOKEN_ACCEPTED;
 	sym_key = rsa_dec_padded(enc_key, offs, pair, &declen);
@@ -276,7 +315,7 @@ int main(void) {
 			} while(status == TOKEN_REJECTED);
 
 			if(status == GENERIC_ERROR) {
-				fprintf(stderr, "Something went wrong. Too bad for your XP. Maybe try again later.\n");
+				fprintf(stderr, "Something went wrong. You lost 10%% XP. Maybe try again later.\n");
 				break;
 			} else if(status == UNKNOWN_KEY) {
 				fprintf(stderr, "Looks like I lost my key. Thanks anyway.\n");

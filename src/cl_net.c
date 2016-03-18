@@ -38,7 +38,7 @@ int cl_connect(const char *remote_addr, const uint16_t port) {
 uint8_t *cl_oneshot(const char *remote_addr, const uint16_t port, const uint8_t *data, const size_t len, size_t *reply_len) {
 	int conn_sock;
 	uint8_t headerbuf[4], *pakbuf;
-	size_t paklen, i;
+	size_t paklen;
 	
 	if((conn_sock = cl_connect(remote_addr, port)) == INVALID_SOCKET) return NULL;
 

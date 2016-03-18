@@ -8,7 +8,6 @@
 
 #define		NET_SV_PUBLIC			0x20
 #define		NET_SV_SECRET			0x21
-#define		NET_SV_TOKEN_REUSED		0x22
 
 #define		NET_CTL_SHUTDOWN		0x30
 
