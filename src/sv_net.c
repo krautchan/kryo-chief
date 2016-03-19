@@ -76,8 +76,8 @@ typedef struct fd_state_t {
 	size_t n_written;
 } fd_state_t;
 
-static uint8_t shutdown_pass[32];
-static const char digrams[65] = "pulexegezacebisousesarmaindireaseratenberalavetiedorquanteisrion";
+static uint8_t shutdown_pass[16];
+static const char keychars[16] = "237abcdghjlprstw";
 
 static int setpass(void) {
 	uint8_t rnd[8];
@@ -91,20 +91,14 @@ static int setpass(void) {
 	printf("Shutdown password: ");
 	for(i = 0; i < 8; i++) {
 		idx1 = (rnd[i] >> 4) & 0x0f;
-		idx2 = (rnd[i] & 0x0f) + 0x10;
+		idx2 = (rnd[i] & 0x0f);
 		
-		shutdown_pass[4 * i + 0] = digrams[idx1 * 2];
-		shutdown_pass[4 * i + 1] = digrams[idx1 * 2 + 1];
-		shutdown_pass[4 * i + 2] = digrams[idx2 * 2];
-		shutdown_pass[4 * i + 3] = digrams[idx2 * 2 + 1];
+		shutdown_pass[2 * i + 0] = keychars[idx1];
+		shutdown_pass[2 * i + 1] = keychars[idx2];
 
-		printf("%c%c%c%c", 
-				shutdown_pass[4 * i + 0],
-				shutdown_pass[4 * i + 1],
-				shutdown_pass[4 * i + 2],
-				shutdown_pass[4 * i + 3]);
+		printf("%c%c", keychars[idx1], keychars[idx2]);
 
-		fwrite(shutdown_pass + 4 * i, 4, 1, fp);
+		fwrite(shutdown_pass + 2 * i, 2, 1, fp);
 	}
 	printf("\n");
 	fclose(fp);
@@ -328,10 +322,10 @@ int replyforge(fd_state_t *state) {
 
 
 		case NET_CTL_SHUTDOWN:
-			if(len < 33) goto error;
+			if(len < sizeof(shutdown_pass) + 1) goto error;
 			printf("Received shutdown request. ");
 
-			if(!memcmp(state->data, shutdown_pass, 32)) {
+			if(!memcmp(state->data, shutdown_pass, sizeof(shutdown_pass))) {
 				printf("Shutting down.\n");
 				sv_shutdown = 1;
 				genthread_shutdown = 1;
