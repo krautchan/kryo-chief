@@ -245,7 +245,6 @@ static uint8_t *request_seckey(const char *token, int *status) {
 	if((sec_key = remote_seckey(token, key_id, &keylen, status)) == NULL) goto freebuf;
 	
 	*status = GENERIC_ERROR;
-	printf("KL: %d\n", keylen);
 	if((secfp = fopen(SECFILE, "wb")) != NULL) {
 		fwrite(sec_key + 1, keylen - 1, 1, secfp);
 		fclose(secfp);
