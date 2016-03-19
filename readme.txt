@@ -22,14 +22,14 @@ bin/client:   It's what you give to your client (duh).
 bin/server:   I'm not really sure what it does. Try running it on a server.
               It will send you a public key on request and a corresponding
               secret key. You'll need to offer a magic number to get the
-			  latter, though.
+              latter, though.
 
 bin/gettok:   Run on the same machine as bin/server. Returns a list of the
               magic numbers that lead to the release of secret keys.
 
 bin/shutdown: Send a shutdown request to the server. You'll need a password.
 
-bin/cc_test:  Takes a magic number and tells you whether it tastes good.
+bin/cc_test:  Takes a magic number and tells you whether it sparkles enough.
               Not included in the default make target. Use make bin/cc_test
 
 --- Special Thanks
