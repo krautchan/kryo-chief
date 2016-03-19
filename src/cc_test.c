@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
 		printf("%s: ", argv[i]);
 
 		switch(chk) {
+			case CC_KNOWN:	printf("Seen before, but ");
 			case CC_OK: 	printf("OK\n"); 				break;
 			case CC_UNSURE:	printf("Maybe OK\n");			break;
 			case CC_BLIST: 	printf("Fail: Blacklist\n"); 	break;
