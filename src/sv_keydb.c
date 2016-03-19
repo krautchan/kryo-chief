@@ -194,9 +194,8 @@ static dbent_t *mknewpair(int *status) {
 	return out;	
 }
 
-static int keydb_insert(dbent_t *newent, const int issued) {
-	if((issued != 1) &&
-		(queue_push(keydb.available_keys, newent) != 1))
+static int keydb_insert(dbent_t *newent) {
+	if((newent->issued == 0) &&	(queue_push(keydb.available_keys, newent) == -1))
 		return 0;
 
 	if((htab_insert(keydb.all_keys, newent->keyid, SHA256_SIZE, newent)) != 1)
@@ -232,7 +231,7 @@ static void *generator_thread(void *arg) {
 			if((newent = mknewpair(&status)) != NULL) {
 				pthread_mutex_lock(&db_mutex);
 				saveent(newent, newent->keyid);
-				keydb_insert(newent, 0);
+				keydb_insert(newent);
 				pthread_mutex_unlock(&db_mutex);
 			}
 			
@@ -250,17 +249,16 @@ static void *generator_thread(void *arg) {
 	pthread_exit(NULL);
 }
 
-static int read_keyfile(const char *filename, htab_t *issued, htab_t *released) {
+static dbent_t *read_keyfile(const char *filename) {
 	FILE *fp;
 	size_t filesize;
 	uint8_t *data;
 	rsa_keypair_t *newpair;
 	dbent_t *newent;
-	int ret = 0;
+	dbent_t *ret = NULL;
 
 	pthread_mutex_lock(&db_mutex);
 
-	printf("Reading file '%s'... ", filename);
 	if((fp = fopen(filename, "rb")) == NULL) goto end;
 
 	filesize = fp_size(fp);
@@ -271,42 +269,51 @@ static int read_keyfile(const char *filename, htab_t *issued, htab_t *released) 
 	if(rsa_keyid_fromserial(data, newent->keyid) == 0) goto freenew;
 
 	newent->issued = newent->released = 0;
-	if(htab_lookup(issued, newent->keyid, SHA256_SIZE) != NULL)
-		newent->issued = 1;
-	if(htab_lookup(released, newent->keyid, SHA256_SIZE) != NULL)
-		newent->released = 1;
-
 	newent->pair = newpair;
 
-	if(keydb_insert(newent, newent->issued) == 0) goto freenew;
-
-	ret = 1;
-
-	printf("(%c%c) ", newent->issued ? 'I' : '/', newent->released ? 'R' : '/');
+	ret = newent;
 
 freenew:
-	if(ret == 0) free(newent);
+	if(ret == NULL) free(newent);
 freepair:
-	if(ret == 0) rsa_keypair_free(newpair);
+	if(ret == NULL) rsa_keypair_free(newpair);
 freedata:
 	free(data);
 closefp:
 	fclose(fp);
 end:
-	printf("%s\n", (ret == 0) ? "Failed!" : "OK!");
 
 	pthread_mutex_unlock(&db_mutex);
 	return ret;
 }
 
 static int read_dir(const char *basedir, htab_t *issued, htab_t *released) {
-	size_t i;
+	size_t i, j;
 	fslist_t *list;
+	dbent_t *new_ent;
 
 	if((list = fslist_scan(basedir)) == NULL) return 0;
 
-	for(i = 0; i < list->n; i++)
-		read_keyfile(list->filename[i], issued, released);
+	for(i = 0; i < list->n; i++) {
+		if((new_ent = read_keyfile(list->filename[i])) == NULL)
+			continue;
+
+		printf("read_dir() New key! ID: ...");
+		for(j = 0; j < 8; j++) {
+			printf("%02x", new_ent->keyid[SHA256_SIZE - 8 + j]);
+		}
+		if(htab_lookup(issued, new_ent->keyid, SHA256_SIZE) != NULL)
+			new_ent->issued = 1;
+		if(htab_lookup(released, new_ent->keyid, SHA256_SIZE) != NULL)
+			new_ent->released =  1;
+
+		printf(" (%c%c) ", new_ent->issued ? 'I' : '-', new_ent->released ? 'R' : '-');
+
+		if(keydb_insert(new_ent) == 0)
+			printf("Failed.\n");
+		else
+			printf("OK.\n");
+	}
 
 	fslist_free(list);
 	return 1;
