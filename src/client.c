@@ -43,8 +43,9 @@
 
 #define TOKEN_ACCEPTED	1
 #define TOKEN_REJECTED	-1
-#define UNKNOWN_KEY		-2
-#define GENERIC_ERROR	-3
+#define TOKEN_REUSED	-2
+#define UNKNOWN_KEY		-3
+#define GENERIC_ERROR	-4
 
 static int hasext(const char *filename, char *ext) {
 	size_t namelen = strlen(filename);
@@ -171,36 +172,7 @@ freesym:
 		free(sym_key);
 	return out;
 }
-/*
-static uint8_t *local_seckey(const char *token, const uint8_t *key_id, size_t *len, int *status) {
-	FILE *fp;
-	uint8_t *serial, mykey_id[32], *out = NULL;
 
-	*status = TOKEN_REJECTED;
-	if(cc_check((uint8_t*)token, strlen(token)) != CC_OK) return NULL;
-	cc_freelists();
-	*status = GENERIC_ERROR;
-	if((fp = fopen("backup.bin", "rb")) == NULL) return NULL;
-	if((*len = fp_size(fp)) == 0) return NULL;
-
-	if((serial = malloc(*len)) == NULL) goto closefp;
-	if(fread(serial, *len, 1, fp) == 0) goto freeserial;
-	if(rsa_keyid_fromserial(serial, mykey_id) == 0) goto freeserial;
-	
-	*status = UNKNOWN_KEY;
-	if(memcmp(key_id, mykey_id, SHA256_SIZE)) goto freeserial;
-
-	*status = TOKEN_ACCEPTED;
-	out = serial;
-
-freeserial:
-	if(out == NULL)
-		free(serial);
-closefp:
-	fclose(fp);
-	return out;
-}
-*/
 static uint8_t *remote_seckey(const char *token, const uint8_t *key_id, size_t *len, int *status) {
 	uint8_t *querypak;
 	uint8_t *reply, *out = NULL;
@@ -217,11 +189,23 @@ static uint8_t *remote_seckey(const char *token, const uint8_t *key_id, size_t *
 	memcpy(querypak + 5 + SHA256_SIZE, token, token_len);
 
 	if((reply = cl_oneshot(CONFIG_SV_ADDR, CONFIG_SV_PORT, querypak, request_len, &reply_len)) == NULL) goto freepak;
-	if(reply_len < 5) goto freerep;
+	if(reply_len < 1) goto freerep;
 
-	if(len)
-		*len = reply_len;
-	out = reply;
+	switch(reply[0]) {
+		case NET_SV_SECRET:
+			if(len)		*len = reply_len;
+			if(status) 	*status = TOKEN_ACCEPTED; 
+			out = reply;
+			break;
+		case NET_SV_TOKEN_OLD:
+			if(len)		*len = 0;
+			if(status)	*status = TOKEN_REUSED;
+			break;
+		case NET_SV_TOKEN_WRONG:
+			if(len)		*len = 0;
+			if(status)	*status = TOKEN_REJECTED;
+			break;
+	}
 	
 freerep:
 	if(out == NULL)
@@ -327,14 +311,19 @@ int main(void) {
 			do {
 				if(status == TOKEN_REJECTED)
 					printf("That didn't work :( Try again.\n");
+				if(status == TOKEN_REUSED)
+					printf("I remember that one... It was wrong, right?\n");
 				request_token = line_in(stdin);
 				if(request_token[0] == '\0')
 					break;
 
 				sym_key = request_seckey(request_token, &status);
 				free(request_token);
-			} while(status != TOKEN_ACCEPTED);
+			} while((status == TOKEN_REJECTED) || (status == TOKEN_REUSED));
 
+			if(status == TOKEN_REUSED) {
+
+			}
 			if(status == GENERIC_ERROR) {
 				fprintf(stderr, "Something went wrong. You lost 10%% XP. Maybe try again later.\n");
 				break;
