@@ -208,17 +208,16 @@ static int dowrite(int fd, fd_state_t *state) {
 uint8_t *packetforge(const uint8_t msg_type, const size_t datalen, const uint8_t *data, size_t *outlen) {
 	uint8_t *out;
 	
-	if(data == NULL)
-		return NULL;
-
 	*outlen = sizeof(uint32_t) + 1 + datalen;
 
-	if((out = malloc(*outlen)) == 0)
+	if((out = malloc(*outlen)) == NULL)
 		return NULL;
 
 	inttoarr(datalen + 1, out);
 	out[4] = msg_type;
-	memcpy(out + sizeof(uint32_t) + 1, data, datalen);
+
+	if(datalen && data)
+		memcpy(out + sizeof(uint32_t) + 1, data, datalen);
 
 	return out;
 }
@@ -264,6 +263,13 @@ int replyforge(fd_state_t *state) {
 			check_result = verify_token((state->data) + SHA256_SIZE, len - SHA256_SIZE - 1);
 			
 			release_secret = 0;
+
+			/*
+			 * Only release a key with a new and valid token.
+			 * If the token is known, only reply if the key
+			 * has been released previously (with any token).
+			 */
+
 			if(check_result == TOKEN_PASS) {
 				printf("Passed.");
 				release_secret = 1;
@@ -288,6 +294,11 @@ int replyforge(fd_state_t *state) {
 				free(serial);
 			} else {
 				printf(" --> Request denied.\n");
+				if(check_result == TOKEN_OLD) {
+					state->reply_data = packetforge(NET_SV_TOKEN_OLD, 0, NULL, &state->reply_len);
+				} else {
+					state->reply_data = packetforge(NET_SV_TOKEN_WRONG, 0, NULL, &state->reply_len);
+				}
 			}
 
 			break;
