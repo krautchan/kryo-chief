@@ -35,7 +35,6 @@ CC=gcc
 CL_OBJS=$(OBJ)/aes.o \
 		$(OBJ)/client.o \
 		$(OBJ)/cl_net.o \
-		$(OBJ)/dynarr.o \
 		$(OBJ)/etc.o \
 		$(OBJ)/filecrypt.o \
 		$(OBJ)/fslist.o \
@@ -65,22 +64,9 @@ SD_OBJS=$(OBJ)/cl_net.o \
 		$(OBJ)/etc.o \
 		$(OBJ)/shutdown.o
 
-CTEST_OBJS=$(OBJ)/ccard.o $(OBJ)/cc_test.o $(OBJ)/dynarr.o $(OBJ)/etc.o
-AESTEST_OBJS=$(OBJ)/aes.o $(OBJ)/aestest.o
-RSATEST_OBJS=$(OBJ)/etc.o \
-			 $(OBJ)/oaep.o \
-			 $(OBJ)/rc4.o \
-			 $(OBJ)/rsa.o \
-			 $(OBJ)/rsa_io.o \
-			 $(OBJ)/rsatest.o\
-			 $(OBJ)/sha256.o \
+CT_OBJS=$(OBJ)/ccard.o $(OBJ)/cc_test.o $(OBJ)/dynarr.o $(OBJ)/etc.o
 
-default: $(BIN)/extract_tokens $(BIN)/client $(BIN)/server $(BIN)/shutdown
-
-all: $(BIN)/aestest $(BIN)/extract_tokens $(BIN)/client $(BIN)/server $(BIN)/shutdown $(BIN)/cc_test $(BIN)/rsatest
-
-$(BIN)/aestest: $(AESTEST_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+all: $(BIN)/extract_tokens $(BIN)/client $(BIN)/server $(BIN)/shutdown
 
 $(BIN)/extract_tokens: $(SRC)/extract_tokens.c
 	$(CC) $(CFLAGS) -o $@ $^
@@ -94,10 +80,7 @@ $(BIN)/server: $(SV_OBJS)
 $(BIN)/shutdown: $(SD_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-$(BIN)/cc_test: $(CTEST_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-
-$(BIN)/rsatest: $(RSATEST_OBJS)
+$(BIN)/cc_test: $(CT_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 .PHONY: clean
