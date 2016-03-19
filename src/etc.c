@@ -130,18 +130,14 @@ void printint(mp_int *i, const char *id) {
 	char *str;
 
 	if(mp_radix_size(i, RADIX, &size) == MP_OKAY) {
-		if((str = malloc(size)) == NULL) {
-			fprintf(stderr, "printint(): malloc() failed.\n");
+		if((str = malloc(size)) == NULL)
 			return;
-		}
 		mp_toradix(i, str, RADIX);
 
 		if(id)
 			printf("%s = ", id);
 		printf("%s\n", str);
 		free(str);
-	} else {
-		fprintf(stderr, "printint(): mp_radix_size() failed.\n");
 	}
 }
 

@@ -215,7 +215,7 @@ static void *generator_thread(void *arg) {
 	dbent_t *newent;
 	size_t n_keys;
 
-	printf("generator_thread(): Starting.\n");
+	printf("Keygen thread: Starting\n");
 
 	while(genthread_shutdown == 0) {
 		n_keys = queue_get_size(keydb.available_keys);
@@ -226,7 +226,7 @@ static void *generator_thread(void *arg) {
 		}
 
 		while((genthread_shutdown == 0) && (n_keys < keydb.n_pregen)) {
-			printf("generator_thread(): Need to generate more keys. (I have %zd/%"PRIu32")\n", n_keys, keydb.n_pregen);
+			printf("Keygen thread: Need to generate more keys. (I have %zd/%"PRIu32")\n", n_keys, keydb.n_pregen);
 			
 			if((newent = mknewpair(&status)) != NULL) {
 				pthread_mutex_lock(&db_mutex);
@@ -237,13 +237,13 @@ static void *generator_thread(void *arg) {
 			
 			n_keys = queue_get_size(keydb.available_keys);
 			if(n_keys == keydb.n_pregen)
-				printf("generator_thread(): Precalculation finished.\n");
+				printf("Keygen thread: Precalculation finished.\n");
 
 			sleep(1);
 		}
 	}
 
-	printf("generator_thread(): Shutting down.\n");
+	printf("Keygen thread: Shutting down.\n");
 	keydb_free();
 	genthread_shutdown = 2;
 	pthread_exit(NULL);
@@ -298,7 +298,7 @@ static int read_dir(const char *basedir, htab_t *issued, htab_t *released) {
 		if((new_ent = read_keyfile(list->filename[i])) == NULL)
 			continue;
 
-		printf("read_dir() New key! ID: ...");
+		printf("Read key. ID: ...");
 		for(j = 0; j < 8; j++) {
 			printf("%02x", new_ent->keyid[SHA256_SIZE - 8 + j]);
 		}
@@ -333,7 +333,7 @@ static void read_kidlist(const char *filename, htab_t *table) {
 	uint8_t data[SHA256_SIZE];
 	int ret;
 
-	printf("read_kidlist: %s\n", filename);
+	printf("Reading keylist: %s\n", filename);
 
 	if((fp = fopen(filename, "rb")) == NULL) return;
 
@@ -364,9 +364,9 @@ int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_re
 	if((keydb.all_keys = htab_new(CONFIG_KEYTAB_SIZE, NULL, free_dbent)) == NULL) goto freereleased;
 	if((keydb.available_keys = queue_new()) == NULL) goto freeall;
 
-	printf("keydb_init(): Scanning direcotory '%s'...\n", basedir);
+	printf("Searching for keys in '%s'...\n", basedir);
 	if(read_dir(basedir, issued, released) == 0) goto freeall;
-	printf("keydb_init(): Got %lu keys. \n", queue_get_size(keydb.available_keys));
+	printf("Got %lu keys. \n", queue_get_size(keydb.available_keys));
 
 	ret = 1;
 	goto freereleased;
@@ -386,7 +386,7 @@ int keydb_spawngen(void) {
 	int status;
 
 	if((status = pthread_create(&genthread, NULL, generator_thread, NULL)) != 0) {
-		fprintf(stderr, "keydb_spawngen(): pthread_create() failed.\n");
+		fprintf(stderr, "Keygen thread: pthread_create() failed.\n");
 		return 0;
 	}
 	pthread_detach(genthread);

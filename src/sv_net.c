@@ -262,7 +262,7 @@ int replyforge(fd_state_t *state) {
 		case NET_CL_REQ_PUBLIC:
 			if(len != 1) goto error;
 
-			printf("Got key issue request!\n");
+			printf("Request public key.\n");
 			if((pair = issue_key()) == NULL) goto error;
 			if((serial = rsa_serialize_public(pair, &klen)) == NULL) goto error;
 			state->reply_data = packetforge(NET_SV_PUBLIC, klen, serial, &state->reply_len);
@@ -273,10 +273,8 @@ int replyforge(fd_state_t *state) {
 
 		case NET_CL_REQ_SECRET:
 			if(len < SHA256_SIZE + 1) goto error;
-			printf("Got secret key Request!\n");
-
-			printaddr(state->peer);
-			printf("Token verification: ");
+			printf("Request secret key. ");
+			printf("Token check: ");
 			check_result = verify_token((state->data) + SHA256_SIZE, len - SHA256_SIZE - 1);
 			
 			release_secret = 0;
@@ -304,26 +302,26 @@ int replyforge(fd_state_t *state) {
 			}
 
 			if(release_secret == 1) {
-				printf(" --> Request granted.\n");
+				printf(" Sending key.");
 				if((pair = release_key(state->data)) == NULL) goto error;
 				if((serial = rsa_serialize_pair(pair, &klen)) == NULL) goto error;
 				state->reply_data = packetforge(NET_SV_SECRET, klen, serial, &state->reply_len);
 				free(serial);
 			} else {
-				printf(" --> Request denied.\n");
 				if(check_result == TOKEN_OLD) {
 					state->reply_data = packetforge(NET_SV_TOKEN_OLD, 0, NULL, &state->reply_len);
 				} else {
 					state->reply_data = packetforge(NET_SV_TOKEN_WRONG, 0, NULL, &state->reply_len);
 				}
 			}
+			printf("\n");
 
 			break;
 
 
 		case NET_CTL_SHUTDOWN:
 			if(len < sizeof(shutdown_pass) + 1) goto error;
-			printf("Received shutdown request. ");
+			printf("Request shutdown. ");
 
 			if(!memcmp(state->data, shutdown_pass, sizeof(shutdown_pass))) {
 				printf("Shutting down.\n");
