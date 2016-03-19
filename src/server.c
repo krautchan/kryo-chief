@@ -37,8 +37,6 @@
 extern int genthread_shutdown;
 
 int main(void) {
-	int listen_socket;
-
 	signal(SIGPIPE, SIG_IGN);
 
 	keydb_init(CONFIG_DATADIR "keystore", CONFIG_PREGEN_KEYS, CONFIG_REGEN_KEYS);
@@ -46,8 +44,9 @@ int main(void) {
 
 	printf("Opening listening socket on port %d\n", CONFIG_SV_PORT);
 
-	if((listen_socket = sv_listen(CONFIG_SV_PORT)) == INVALID_SOCKET) {
+	if(sv_listen(CONFIG_SV_PORT) == 0) {
 		printf("listen() failed!\n");
+		genthread_shutdown = 1;
 		goto end;
 	}
 
