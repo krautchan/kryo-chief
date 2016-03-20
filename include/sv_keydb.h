@@ -22,10 +22,8 @@
  */
 
 #ifndef SV_KEYDB_H_
-
 #define SV_KEYDB_H_
 
-#include <pthread.h>
 #include <stdint.h>
 
 #include "rsa.h"

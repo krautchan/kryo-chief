@@ -24,6 +24,9 @@
 #ifndef RSA_IO_H_
 #define RSA_IO_H_
 
+#include <stdint.h>
+#include <stdlib.h>
+
 #include "rsa.h"
 
 #define INT_SIZE	sizeof(uint32_t)

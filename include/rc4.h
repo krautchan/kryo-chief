@@ -25,6 +25,7 @@
 #define RC4_H_
 
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef struct rc4_ctx_t {
 	uint8_t idx1, idx2;
