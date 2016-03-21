@@ -27,8 +27,9 @@ BIN=bin
 
 CFLAGS=-I$(INC) -O0 -ggdb -Wall
 #CFLAGS=-I$(INC) -O2 -Wall
-LDFLAGS=-ltommath
+LDFLAGS_CL=-ltommath
 LDFLAGS_SV=-ltommath -lpthread
+LDFLAGS_SD=
 
 CC=gcc
 
@@ -36,6 +37,7 @@ CL_OBJS=$(OBJ)/aes.o \
 		$(OBJ)/client.o \
 		$(OBJ)/cl_net.o \
 		$(OBJ)/etc.o \
+		$(OBJ)/etc_math.o \
 		$(OBJ)/filecrypt.o \
 		$(OBJ)/fslist.o \
 		$(OBJ)/oaep.o \
@@ -47,6 +49,7 @@ CL_OBJS=$(OBJ)/aes.o \
 SV_OBJS=$(OBJ)/ccard.o \
 		$(OBJ)/dynarr.o \
 		$(OBJ)/etc.o \
+		$(OBJ)/etc_math.o \
 		$(OBJ)/fslist.o \
 		$(OBJ)/hfuncs.o \
 		$(OBJ)/htab.o \
@@ -72,13 +75,13 @@ $(BIN)/gettok: $(SRC)/gettok.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 $(BIN)/client: $(CL_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS_CL) -o $@ $^
 
 $(BIN)/server: $(SV_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS_SV) -o $@ $^
 
 $(BIN)/shutdown: $(SD_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS_SD) -o $@ $^
 
 $(BIN)/cc_test: $(CT_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^

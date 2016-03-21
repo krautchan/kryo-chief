@@ -30,6 +30,7 @@
 #include "aes.h"
 #include "config.h"
 #include "etc.h"
+#include "etc_math.h"
 #include "oaep.h"
 #include "rsa.h"
 #include "rsa_int.h"
