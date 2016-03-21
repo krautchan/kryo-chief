@@ -21,16 +21,20 @@
  * 
  */
 
+#include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "ccard.h"
 
 int main(int argc, char **argv) {
-	int i, chk;
+	int i, chk, len;
+	char realcheck;
 
 	for(i = 1; i < argc; i++) {
-		chk = cc_check((uint8_t*)argv[i], strlen(argv[i]));
+		len = strlen(argv[i]);
+		chk = cc_check((uint8_t*)argv[i], strlen(argv[i]), &realcheck);
 		printf("%s: ", argv[i]);
 
 		switch(chk) {
@@ -40,7 +44,8 @@ int main(int argc, char **argv) {
 			case CC_BLIST: 	printf("Fail: Blacklist\n"); 	break;
 			case CC_WLIST:	printf("Fail: Whitelist\n");	break;
 			case CC_LENGTH:	printf("Fail: Length\n");		break;
-			case CC_CKSUM:	printf("Fail: Checksum\n");		break;
+			case CC_CKSUM:	argv[i][len - 1] = realcheck;
+							printf(" -> %s\n", argv[i]);
 		}
 		cc_freelists();
 	}

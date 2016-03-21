@@ -21,32 +21,25 @@
  * 
  */
 
-#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "config.h"
-#include "sv_keydb.h"
-#include "sv_net.h"
-#include "etc.h"
+#include <tommath.h>
 
-extern int genthread_shutdown;
+#define RADIX 16
 
-int main(void) {
-	signal(SIGPIPE, SIG_IGN);
+void printint(mp_int *i, const char *id) {
+	int size;
+	char *str;
 
-	keydb_init(CONFIG_DATADIR "keystore", CONFIG_PREGEN_KEYS, CONFIG_REGEN_KEYS);
-	if(keydb_spawngen() == 0) goto end;
+	if(mp_radix_size(i, RADIX, &size) == MP_OKAY) {
+		if((str = malloc(size)) == NULL)
+			return;
+		mp_toradix(i, str, RADIX);
 
-	printf("Opening listening socket on port %d\n", CONFIG_SV_PORT);
-
-	if(sv_listen(CONFIG_SV_PORT) == 0) {
-		printf("listen() failed!\n");
-		genthread_shutdown = 1;
-		goto end;
+		if(id)
+			printf("%s = ", id);
+		printf("%s\n", str);
+		free(str);
 	}
-
-	while(genthread_shutdown < 2);
-
-end:
-	return EXIT_SUCCESS;
-
 }

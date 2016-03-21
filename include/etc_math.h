@@ -21,32 +21,11 @@
  * 
  */
 
-#include <signal.h>
+#ifndef ETC_MATH_H_
+#define ETC_MATH_H_
 
-#include "config.h"
-#include "sv_keydb.h"
-#include "sv_net.h"
-#include "etc.h"
+#include <tommath.h>
 
-extern int genthread_shutdown;
+void printint(mp_int *i, const char *id);
 
-int main(void) {
-	signal(SIGPIPE, SIG_IGN);
-
-	keydb_init(CONFIG_DATADIR "keystore", CONFIG_PREGEN_KEYS, CONFIG_REGEN_KEYS);
-	if(keydb_spawngen() == 0) goto end;
-
-	printf("Opening listening socket on port %d\n", CONFIG_SV_PORT);
-
-	if(sv_listen(CONFIG_SV_PORT) == 0) {
-		printf("listen() failed!\n");
-		genthread_shutdown = 1;
-		goto end;
-	}
-
-	while(genthread_shutdown < 2);
-
-end:
-	return EXIT_SUCCESS;
-
-}
+#endif
