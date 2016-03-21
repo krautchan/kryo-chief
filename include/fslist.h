@@ -24,6 +24,8 @@
 #ifndef FSLIST_H_
 #define FSLIST_H_
 
+#include <stdlib.h>
+
 #ifndef PREALLOC_FILES
 #define PREALLOC_FILES	8
 #endif

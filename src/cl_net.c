@@ -22,6 +22,7 @@
  */
 
 #include <netdb.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -31,8 +32,9 @@
 
 #include "cl_net.h"
 #include "etc.h"
+#include "net.h"
 
-int cl_connect(const char *remote_addr, const uint16_t port) {
+static int cl_connect(const char *remote_addr, const uint16_t port) {
 	int conn_sock;
 	struct sockaddr_in addr;
 	struct hostent *resolved;

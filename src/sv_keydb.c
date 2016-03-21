@@ -22,7 +22,6 @@
  */
 
 #include <inttypes.h>
-#include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>

@@ -28,12 +28,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 
 #include "ccard.h"
 #include "config.h"
 #include "etc.h"
+#include "net.h"
 #include "protocol.h"
 #include "rsa.h"
 #include "rsa_io.h"

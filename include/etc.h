@@ -25,8 +25,11 @@
 #define ETC_H_
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #include <tommath.h>
+
+#define INT_SIZE       (sizeof(uint32_t))
 
 typedef void (*freefunc_t)(void*);
 
