@@ -68,7 +68,7 @@ CT_OBJS=$(OBJ)/ccard.o $(OBJ)/cc_test.o $(OBJ)/dynarr.o $(OBJ)/etc.o
 
 all: $(BIN)/gettok $(BIN)/client $(BIN)/server $(BIN)/shutdown
 
-$(BIN)/gettok: $(SRC)/extract_tokens.c
+$(BIN)/gettok: $(SRC)/gettok.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 $(BIN)/client: $(CL_OBJS)
