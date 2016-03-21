@@ -29,7 +29,6 @@ CFLAGS=-I$(INC) -O0 -ggdb -Wall
 #CFLAGS=-I$(INC) -O2 -Wall
 LDFLAGS_CL=-ltommath
 LDFLAGS_SV=-ltommath -lpthread
-LDFLAGS_SD=
 
 CC=gcc
 
@@ -69,7 +68,9 @@ SD_OBJS=$(OBJ)/cl_net.o \
 
 CT_OBJS=$(OBJ)/ccard.o $(OBJ)/cc_test.o $(OBJ)/dynarr.o $(OBJ)/etc.o
 
-all: $(BIN)/gettok $(BIN)/client $(BIN)/server $(BIN)/shutdown
+needed: $(BIN)/gettok $(BIN)/client $(BIN)/server $(BIN)/shutdown
+
+all: $(BIN)/cc_test $(BIN)/gettok $(BIN)/client $(BIN)/server $(BIN)/shutdown
 
 $(BIN)/gettok: $(SRC)/gettok.c
 	$(CC) $(CFLAGS) -o $@ $^
@@ -81,10 +82,10 @@ $(BIN)/server: $(SV_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS_SV) -o $@ $^
 
 $(BIN)/shutdown: $(SD_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS_SD) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 
 $(BIN)/cc_test: $(CT_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 
 .PHONY: clean
 

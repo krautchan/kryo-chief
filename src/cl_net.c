@@ -34,6 +34,32 @@
 #include "cl_net.h"
 #include "etc.h"
 #include "net.h"
+#include "sha256.h"
+
+uint8_t *requestforge(const uint8_t msg_type, const uint8_t *keyid, const uint8_t *data, const size_t data_len, size_t *out_len) {
+	uint8_t *request;
+	uint32_t paksize;
+	size_t offs = 0;
+
+	paksize = 1 + data_len + (keyid ? SHA256_SIZE : 0);
+	*out_len = paksize + INT_SIZE;
+
+	if((request = malloc(*out_len)) == NULL) return NULL;
+
+	inttoarr(paksize, request);
+	offs += INT_SIZE;
+	request[offs++] = msg_type;
+
+	if(keyid) {
+		memcpy(request + offs, keyid, SHA256_SIZE);
+		offs += SHA256_SIZE;
+	}
+	if(data)
+		memcpy(request + offs, data, data_len);
+
+	return request;
+}
+
 
 static int cl_connect(const char *remote_addr, const uint16_t port) {
 	int conn_sock;
@@ -61,30 +87,31 @@ static int cl_connect(const char *remote_addr, const uint16_t port) {
 	return conn_sock;
 }
 
-uint8_t *cl_oneshot(const char *remote_addr, const uint16_t port, const uint8_t *data, const size_t len, size_t *reply_len) {
+reply_t *cl_sendrecv(const char *remote_addr, const uint16_t port, const uint8_t *data, const size_t len) {
 	int conn_sock;
-	uint8_t headerbuf[4], *pakbuf;
-	size_t paklen;
-	
+	uint8_t headerbuf[4];
+	reply_t *out;
+
+	if((out = malloc(sizeof(reply_t))) == NULL) return NULL;
 	if((conn_sock = cl_connect(remote_addr, port)) == INVALID_SOCKET) return NULL;
 
 	if(send(conn_sock, data, len, 0) == -1) return NULL;
 	if(recv(conn_sock, headerbuf, 4, 0) == -1) return NULL;
 
-	paklen = arrtoint(headerbuf);
-	if(reply_len)
-		*reply_len = paklen;
+	out->data_len = arrtoint(headerbuf) - 1;
 
-	if((pakbuf = malloc(paklen)) == NULL) {
-		close(conn_sock);
-		return NULL;
-	}
+	if((out->data = malloc(out->data_len)) == NULL) goto close;
+	if(recv(conn_sock, &(out->msg_type), 1, 0) == -1) goto freeout;
+	if(recv(conn_sock, out->data, out->data_len, 0) == -1) goto freedata;
 
-	if(recv(conn_sock, pakbuf, paklen, 0) == -1) {
-		free(pakbuf);
-		pakbuf = NULL;
-	}
+	goto close;
 
+freedata:
+	free(out->data);
+freeout:
+	free(out);
+	out = NULL;
+close:
 	close(conn_sock);
-	return pakbuf;
+	return out;
 }

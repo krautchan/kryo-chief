@@ -106,7 +106,7 @@ static int setpass(void) {
 }
 
 int verify_token(const uint8_t *token, const size_t tlen) {
-	int check_result = cc_check(token, tlen);
+	int check_result = cc_check(token, tlen, NULL);
 
 	if(check_result == CC_OK) {
 		cc_save(token, tlen, CONFIG_DATADIR "release_tokens");

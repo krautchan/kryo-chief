@@ -37,6 +37,6 @@
 
 void cc_freelists(void);
 void cc_save(const uint8_t *num, const size_t len, const char *filename);
-int cc_check(const uint8_t *num, const size_t len);
+int cc_check(const uint8_t *num, const size_t len, char *realcheck);
 
 #endif
