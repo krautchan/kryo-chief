@@ -24,9 +24,10 @@
 #ifndef RSA_IO_H_
 #define RSA_IO_H_
 
-#include "rsa.h"
+#include <stdint.h>
+#include <stdlib.h>
 
-#define INT_SIZE	sizeof(uint32_t)
+#include "rsa.h"
 
 uint8_t *rsa_serialize_public(rsa_keypair_t *pair, size_t *len);
 rsa_keypair_t *rsa_read_public(const uint8_t *data, const size_t len);

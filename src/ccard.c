@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ccard.h"
 #include "config.h"
@@ -235,9 +236,9 @@ void cc_save(const uint8_t *num, const size_t len, const char *filename) {
 	fclose(fp);
 }
 
-int cc_check(const uint8_t *num, const size_t len) {
+int cc_check(const uint8_t *num, const size_t len, char *realcheck) {
 	size_t i;
-	char c, check;
+	char c, check, check_exp;
 	uint32_t sum = 0;
 	int ret;
 	uint8_t *savenum;
@@ -270,7 +271,12 @@ int cc_check(const uint8_t *num, const size_t len) {
 	}
 
 	check = num[len - 1] - '0';
-	if((sum * 9) % 10 != check)
+	check_exp = (sum * 9) % 10;
+
+	if(realcheck)
+		*realcheck = check_exp;
+
+	if(check_exp != check)
 		return CC_CKSUM;
 
 	if((savenum = malloc(len)) != NULL) {

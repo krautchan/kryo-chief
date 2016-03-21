@@ -21,17 +21,11 @@
  * 
  */
 
-#include <pthread.h>
 #include <signal.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-#include <sys/socket.h>
 
 #include "config.h"
 #include "sv_keydb.h"
 #include "sv_net.h"
-
 #include "etc.h"
 
 extern int genthread_shutdown;

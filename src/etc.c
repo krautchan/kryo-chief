@@ -24,10 +24,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <tommath.h>
-
-#define RADIX 16
+#include <string.h>
 
 union endtest_t {
 	uint32_t i;
@@ -123,22 +120,6 @@ int getrand(uint8_t *dst, int len, void *dat) {
 
 	fclose(fp);
 	return bytes_read;
-}
-
-void printint(mp_int *i, const char *id) {
-	int size;
-	char *str;
-
-	if(mp_radix_size(i, RADIX, &size) == MP_OKAY) {
-		if((str = malloc(size)) == NULL)
-			return;
-		mp_toradix(i, str, RADIX);
-
-		if(id)
-			printf("%s = ", id);
-		printf("%s\n", str);
-		free(str);
-	}
 }
 
 #define BUFSIZE 16

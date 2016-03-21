@@ -21,19 +21,11 @@
  * 
  */
 
-#ifndef RSA_INT_H_
-#define RSA_INT_H_
+#ifndef ETC_MATH_H_
+#define ETC_MATH_H_
 
 #include <tommath.h>
 
-struct rsa_keypair_t {
-	mp_int *p, *q;
-	mp_int *public, *secret;
-	mp_int *modulus;
-
-	mp_int *dp, *dq, *qi;
-
-	size_t ksize_bytes;
-};
+void printint(mp_int *i, const char *id);
 
 #endif

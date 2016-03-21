@@ -22,11 +22,11 @@
  */
 
 #include <inttypes.h>
-#include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "config.h"
@@ -366,7 +366,7 @@ int keydb_init(const char *basedir, const uint32_t n_pregen, const uint32_t n_re
 
 	printf("Searching for keys in '%s'...\n", basedir);
 	if(read_dir(basedir, issued, released) == 0) goto freeall;
-	printf("Got %lu keys. \n", queue_get_size(keydb.available_keys));
+	printf("Got %zd keys. \n", queue_get_size(keydb.available_keys));
 
 	ret = 1;
 	goto freereleased;

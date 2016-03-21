@@ -21,8 +21,8 @@
  * 
  */
 
-#ifndef TABLES_H
-#define TABLES_H
+#ifndef AES_TABLES_H
+#define AES_TABLES_H
 
 #include <stdint.h>
 

@@ -22,6 +22,7 @@
  */
 
 #include <getopt.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,8 +40,8 @@
 static int send_password(const char *password, const size_t len) {
 	uint8_t *packet;
 	size_t paksize = len + 5;
-	uint8_t *reply;
 	int ret = EXIT_FAILURE;
+	void *reply;
 
 	if((packet = malloc(paksize)) == NULL)
 		return ret;
@@ -52,7 +53,7 @@ static int send_password(const char *password, const size_t len) {
 	printf("Using password '%s'.\n", password);
 	printf("Sending shutdown request to %s:%d...\n", CONFIG_SV_ADDR, CONFIG_SV_PORT);
 
-	if((reply = cl_oneshot(CONFIG_SV_ADDR, CONFIG_SV_PORT, packet, paksize, NULL)) != NULL)
+	if((reply = cl_sendrecv(CONFIG_SV_ADDR, CONFIG_SV_PORT, packet, paksize)) != NULL)
 			ret = EXIT_SUCCESS;
 
 	free(packet);

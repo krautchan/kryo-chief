@@ -23,18 +23,17 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 
 #include "ccard.h"
 #include "config.h"
 #include "etc.h"
+#include "net.h"
 #include "protocol.h"
 #include "rsa.h"
 #include "rsa_io.h"
@@ -107,7 +106,7 @@ static int setpass(void) {
 }
 
 int verify_token(const uint8_t *token, const size_t tlen) {
-	int check_result = cc_check(token, tlen);
+	int check_result = cc_check(token, tlen, NULL);
 
 	if(check_result == CC_OK) {
 		cc_save(token, tlen, CONFIG_DATADIR "release_tokens");

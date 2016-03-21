@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <tommath.h>
+#define INT_SIZE       (sizeof(uint32_t))
 
 typedef void (*freefunc_t)(void*);
 
@@ -39,7 +39,6 @@ size_t fp_size(FILE *fp);
 char *alloc_copy(const char *str);
 void xorblock(uint8_t *dat1, uint8_t *dat2, size_t len);
 int getrand(uint8_t *dst, int len, void *dat);
-void printint(mp_int *i, const char *id);
 char *line_in(FILE *fp);
 
 #endif

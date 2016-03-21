@@ -23,12 +23,14 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <tommath.h>
 
 #include "aes.h"
 #include "config.h"
 #include "etc.h"
+#include "etc_math.h"
 #include "oaep.h"
 #include "rsa.h"
 #include "rsa_int.h"

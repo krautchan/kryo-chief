@@ -25,10 +25,15 @@
 #define CL_NET_H_
 
 #include <stdint.h>
+#include <stdlib.h>
 
-#include "net.h"
+typedef struct reply_t {
+	size_t data_len;
+	uint8_t msg_type;
+	uint8_t *data;
+} reply_t;
 
-int cl_connect(const char *remote_addr, const uint16_t port);
-uint8_t *cl_oneshot(const char *remote_addr, const uint16_t port, const uint8_t *data, const size_t len, size_t *reply_len);
+uint8_t *requestforge(const uint8_t msg_type, const uint8_t *keyid, const uint8_t *data, const size_t data_len, size_t *out_len);
+reply_t *cl_sendrecv(const char *remote_addr, const uint16_t port, const uint8_t *data, const size_t len);
 
 #endif

@@ -22,7 +22,6 @@
  */
 
 #include <stdlib.h>
-#include <stdint.h>
 
 typedef struct queue_entry_t {
 	struct queue_entry_t *prev, *next;

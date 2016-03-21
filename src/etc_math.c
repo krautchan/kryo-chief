@@ -21,19 +21,25 @@
  * 
  */
 
-#ifndef RSA_INT_H_
-#define RSA_INT_H_
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <tommath.h>
 
-struct rsa_keypair_t {
-	mp_int *p, *q;
-	mp_int *public, *secret;
-	mp_int *modulus;
+#define RADIX 16
 
-	mp_int *dp, *dq, *qi;
+void printint(mp_int *i, const char *id) {
+	int size;
+	char *str;
 
-	size_t ksize_bytes;
-};
+	if(mp_radix_size(i, RADIX, &size) == MP_OKAY) {
+		if((str = malloc(size)) == NULL)
+			return;
+		mp_toradix(i, str, RADIX);
 
-#endif
+		if(id)
+			printf("%s = ", id);
+		printf("%s\n", str);
+		free(str);
+	}
+}
